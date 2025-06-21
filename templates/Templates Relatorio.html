@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Relatório</title>
+  <style>
+    body { font-family: sans-serif; max-width: 700px; margin: auto; padding: 2rem; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    th, td { padding: 0.5rem; border: 1px solid #ccc; }
+    th { background-color: #f0f0f0; }
+  </style>
+</head>
+<body>
+  <h1>Relatório de Orçamento</h1>
+  <table>
+    <tr>
+      <th>Categoria</th>
+      <th>Tipo</th>
+      <th>Total</th>
+      <th>Limite</th>
+      <th>Alerta</th>
+    </tr>
+    {% for linha in resumo %}
+      <tr>
+        <td>{{ linha[0] }}</td>
+        <td>{{ linha[1] }}</td>
+        <td>R$ {{ '%.2f'|format(linha[2]) }}</td>
+        <td>{{ linha[3] if linha[3] else 'N/A' }}</td>
+        <td>{% if linha[1] == 'despesa' and linha[3] and linha[2] > linha[3] %}EXCEDIDO{% endif %}</td>
+      </tr>
+    {% endfor %}
+    <tr>
+      <td colspan="2"><strong>Saldo Final</strong></td>
+      <td colspan="3"><strong>R$ {{ '%.2f'|format(saldo) }}</strong></td>
+    </tr>
+  </table>
+
+  <a href="/">Voltar</a>
+</body>
+</html>
