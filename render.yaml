@@ -23,4 +23,4 @@ services:
 
 databases:
   - name: orcamento-pessoal-db
-    plan: starter
+    plan: basic-256mb
