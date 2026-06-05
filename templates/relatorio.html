@@ -1,0 +1,210 @@
+{% extends 'base.html' %}
+
+{% block title %}Conferencia | Orcamento Pessoal{% endblock %}
+
+{% block pdf_subtitle %}
+<p>Relatorio de receitas, despesas e saldo por competencia.</p>
+{% endblock %}
+
+{% block content %}
+{% if pdf_mode %}
+<section class="pdf-meta-grid">
+  <article class="pdf-meta-card">
+    <span class="metric-label">Periodo inicial</span>
+    <strong>{{ competencia_inicio or competencia or '-' }}</strong>
+    <small>Competencia inicial analisada</small>
+  </article>
+  <article class="pdf-meta-card">
+    <span class="metric-label">Periodo final</span>
+    <strong>{{ competencia_fim or competencia or '-' }}</strong>
+    <small>Competencia final analisada</small>
+  </article>
+  <article class="pdf-meta-card">
+    <span class="metric-label">Filtro principal</span>
+    <strong>{{ pagador_filtro or 'Todos os pagadores' }}</strong>
+    <small>{{ tipo_filtro or 'Receitas e despesas' }}</small>
+  </article>
+</section>
+
+<section class="pdf-summary-grid">
+  <article class="pdf-summary-card">
+    <span class="metric-label">Receitas</span>
+    <strong>R$ {{ '%.2f'|format(receita or 0) }}</strong>
+    <small>Total de entradas no periodo</small>
+  </article>
+  <article class="pdf-summary-card">
+    <span class="metric-label">Despesas</span>
+    <strong>R$ {{ '%.2f'|format(despesa or 0) }}</strong>
+    <small>Total de saidas no periodo</small>
+  </article>
+  <article class="pdf-summary-card">
+    <span class="metric-label">Saldo</span>
+    <strong>R$ {{ '%.2f'|format(saldo or 0) }}</strong>
+    <small>{{ 'Resultado positivo' if saldo >= 0 else 'Resultado negativo' }}</small>
+  </article>
+  <article class="pdf-summary-card">
+    <span class="metric-label">Agrupamentos</span>
+    <strong>{{ resumo|length }}</strong>
+    <small>Linhas consolidadas no relatorio</small>
+  </article>
+</section>
+
+<section class="pdf-report-section">
+  <div class="pdf-section-header">
+    <div>
+      <h2>Resumo por competencia</h2>
+      <p>Valores agrupados por categoria, tipo, pagador e forma de pagamento.</p>
+    </div>
+  </div>
+  <table class="pdf-report-table">
+    <thead>
+      <tr>
+        <th style="width: 12%;">Competencia</th>
+        <th style="width: 20%;">Categoria</th>
+        <th style="width: 11%;">Tipo</th>
+        <th style="width: 15%;">Valor</th>
+        <th style="width: 12%;">% plano</th>
+        <th style="width: 15%;">Pagador</th>
+        <th style="width: 15%;">Forma</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for linha in resumo %}
+      <tr>
+        <td>{{ linha[0] }}</td>
+        <td>{{ linha[1] }}</td>
+        <td>{{ linha[2] }}</td>
+        <td class="cell-amount">R$ {{ '%.2f'|format(linha[3] or 0) }}</td>
+        <td>{{ '%.2f'|format(linha[4] or 0) }}%</td>
+        <td>{{ linha[5] or '-' }}</td>
+        <td>{{ linha[6] or '-' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% else %}
+<section class="page-header">
+  <div>
+    <span class="eyebrow">Relatorio</span>
+    <h1>Conferencia financeira</h1>
+    <p>Confira receitas, despesas e saldo por competencia, categoria e pagador.</p>
+  </div>
+</section>
+
+<section class="panel period-filter">
+  <form method="get" action="{{ url_for('relatorio') }}">
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="competenciaInicio">Periodo inicial</label>
+        <input type="text" name="competencia_inicio" id="competenciaInicio" maxlength="7" placeholder="MM/AAAA" pattern="\d{2}/\d{4}" value="{{ competencia_inicio or competencia or '' }}">
+      </div>
+      <div class="form-group">
+        <label for="competenciaFim">Periodo final</label>
+        <input type="text" name="competencia_fim" id="competenciaFim" maxlength="7" placeholder="MM/AAAA" pattern="\d{2}/\d{4}" value="{{ competencia_fim or competencia or '' }}">
+      </div>
+      <div class="form-group">
+        <label for="pagador">Pagador</label>
+        <select name="pagador" id="pagador">
+          <option value="">Todos os pagadores</option>
+          {% for pagador in pagadores %}
+          <option value="{{ pagador }}" {% if pagador_filtro == pagador %}selected{% endif %}>{{ pagador }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="tipo">Tipo</label>
+        <select name="tipo" id="tipo">
+          <option value="">Receitas e despesas</option>
+          <option value="receita" {% if tipo_filtro == 'receita' %}selected{% endif %}>Receitas</option>
+          <option value="despesa" {% if tipo_filtro == 'despesa' %}selected{% endif %}>Despesas</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Filtrar conferencia</button>
+      <a href="{{ url_for('relatorio') }}" class="btn btn-secondary">Limpar filtros</a>
+    </div>
+  </form>
+</section>
+
+<section class="metric-grid budget-summary">
+  <article class="metric-card positive">
+    <span class="metric-label">Receitas</span>
+    <strong>R$ {{ '%.2f'|format(receita or 0) }}</strong>
+    <small>Total de entradas no periodo</small>
+  </article>
+  <article class="metric-card negative">
+    <span class="metric-label">Despesas</span>
+    <strong>R$ {{ '%.2f'|format(despesa or 0) }}</strong>
+    <small>Total de saidas no periodo</small>
+  </article>
+  <article class="metric-card {{ 'negative' if saldo < 0 else 'positive' }}">
+    <span class="metric-label">Saldo</span>
+    <strong>R$ {{ '%.2f'|format(saldo or 0) }}</strong>
+    <small>{{ 'Resultado negativo' if saldo < 0 else 'Resultado positivo' }}</small>
+  </article>
+  <article class="metric-card">
+    <span class="metric-label">Agrupamentos</span>
+    <strong>{{ resumo|length }}</strong>
+    <small>Linhas encontradas na conferencia</small>
+  </article>
+</section>
+
+<section class="table-container table-section">
+  <div class="table-toolbar">
+    <div>
+      <h2>Resumo por competencia</h2>
+      <p>Valores agrupados por categoria, tipo e pagador.</p>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Competencia</th>
+        <th>Categoria</th>
+        <th>Tipo</th>
+        <th>Valor</th>
+        <th>% planejado</th>
+        <th>Pagador</th>
+        <th>Forma</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for linha in resumo %}
+      <tr>
+        <td>{{ linha[0] }}</td>
+        <td><strong>{{ linha[1] }}</strong></td>
+        <td><span class="status {{ linha[2] }}">{{ linha[2] }}</span></td>
+        <td>
+          <span class="{{ 'amount-positive' if linha[2] == 'receita' else 'amount-negative' }}">
+            R$ {{ '%.2f'|format(linha[3] or 0) }}
+          </span>
+        </td>
+        <td>{{ '%.2f'|format(linha[4] or 0) }}%</td>
+        <td>{{ linha[5] or '-' }}</td>
+        <td>{{ linha[6] or '-' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if not pdf_mode %}
+<script>
+function mascaraCompetencia(input) {
+  input.addEventListener('input', function(e) {
+    let v = e.target.value.replace(/\D/g, '');
+    if (v.length > 2) v = v.slice(0, 2) + '/' + v.slice(2, 6);
+    e.target.value = v.slice(0, 7);
+  });
+}
+mascaraCompetencia(document.getElementById('competenciaInicio'));
+mascaraCompetencia(document.getElementById('competenciaFim'));
+</script>
+{% endif %}
+{% endblock %}

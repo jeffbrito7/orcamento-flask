@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+
+{% block title %}Importar CSV | Orçamento Pessoal{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <span class="eyebrow">Importação</span>
+    <h1>Importar lançamentos</h1>
+    <p>Envie uma planilha simples em CSV para cadastrar receitas e despesas em lote.</p>
+  </div>
+</section>
+
+{% if sucesso is not none %}
+<div class="alert alert-success">
+  <strong>{{ sucesso }}</strong> lançamento(s) importado(s) com sucesso.
+</div>
+{% endif %}
+
+{% if erros %}
+<div class="alert alert-danger">
+  Alguns registros não foram importados. Confira os detalhes no fim da página.
+</div>
+{% endif %}
+
+<section class="content-grid import-layout">
+  <article class="panel">
+    <div class="panel-header">
+      <div>
+        <h2>Arquivo para importação</h2>
+        <p>Selecione um CSV exportado da planilha com cabeçalho na primeira linha.</p>
+      </div>
+    </div>
+
+    <form action="{{ url_for('importar') }}" method="post" enctype="multipart/form-data">
+      <div class="upload-box">
+        <label for="arquivo">Arquivo CSV</label>
+        <input type="file" name="arquivo" id="arquivo" accept=".csv" required>
+        <small class="field-help">Use apenas arquivos .csv. O sistema aceita arquivos do Excel com acentos.</small>
+      </div>
+
+      <button type="submit" class="btn btn-primary">Importar lançamentos</button>
+    </form>
+  </article>
+
+  <article class="panel">
+    <div class="panel-header">
+      <div>
+        <h2>Como montar a planilha</h2>
+        <p>Use nomes simples no cabeçalho. A categoria pode ser escrita pelo nome cadastrado no sistema.</p>
+      </div>
+    </div>
+
+    <div class="format-list">
+      <div><strong>Data</strong><span>Dia do lançamento, por exemplo 17/04/2026</span></div>
+      <div><strong>Tipo</strong><span>Informe Receita ou Despesa</span></div>
+      <div><strong>Valor</strong><span>Valor em reais, exemplo 125,90 ou 125.90</span></div>
+      <div><strong>Categoria</strong><span>Nome da categoria já cadastrada, exemplo Mercado</span></div>
+      <div><strong>Descrição</strong><span>Breve explicação do lançamento</span></div>
+      <div><strong>Pagador</strong><span>Nome do pagador cadastrado. Pode ficar vazio.</span></div>
+      <div><strong>Forma de pagamento</strong><span>Opcional. Exemplo: Dinheiro ou Cartão de crédito</span></div>
+    </div>
+  </article>
+</section>
+
+<section class="panel import-example">
+  <div class="panel-header">
+    <div>
+      <h2>Exemplo de CSV</h2>
+      <p>Copie este modelo para montar sua planilha. Ele usa ponto e vírgula para aceitar centavos com vírgula.</p>
+    </div>
+  </div>
+
+  <pre><code>Data;Tipo;Valor;Categoria;Descrição;Pagador;Forma de pagamento
+17/04/2026;Receita;3500;Salário;Pagamento do mês;Jeff;PIX
+18/04/2026;Despesa;125,90;Mercado;Compra da semana;Jeff;Cartão de crédito
+19/04/2026;Despesa;89.50;Internet;Plano mensal;Casa;Dinheiro</code></pre>
+</section>
+
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <h2>Antes de importar</h2>
+      <p>Uma conferência rápida evita a maior parte dos erros.</p>
+    </div>
+  </div>
+
+  <ul class="check-list">
+    <li>Cadastre as categorias antes e escreva o nome da categoria na planilha.</li>
+    <li>Cadastre os pagadores antes, se quiser informar quem pagou ou recebeu.</li>
+    <li>Cadastre as formas de pagamento antes, se quiser informar como o lançamento foi pago.</li>
+    <li>Na coluna <strong>Tipo</strong>, escreva apenas <strong>Receita</strong> ou <strong>Despesa</strong>.</li>
+    <li>Na coluna <strong>Valor</strong>, você pode usar vírgula ou ponto para centavos.</li>
+    <li>Se usar vírgula nos centavos, exporte o CSV separado por ponto e vírgula.</li>
+    <li>Não remova o cabeçalho do arquivo.</li>
+  </ul>
+</section>
+
+{% if erros %}
+<section class="table-container table-section">
+  <div class="table-toolbar">
+    <div>
+      <h2>Erros encontrados</h2>
+      <p>Corrija o arquivo e importe novamente apenas os registros pendentes.</p>
+    </div>
+    <span class="pill">{{ erros|length }} erro(s)</span>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Linha</th>
+        <th>Mensagem</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for erro in erros %}
+      <tr>
+        <td>#{{ erro.linha }}</td>
+        <td>{{ erro.msg }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+{% endblock %}

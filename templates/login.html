@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login | Orcamento Pessoal</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body class="auth-body">
+  <main class="auth-page">
+    <section class="auth-card">
+      <a class="brand auth-brand" href="{{ url_for('login') }}">
+        <span class="brand-mark">OP</span>
+        <span>
+          <strong>Orcamento Pessoal</strong>
+          <small>{{ app_version }}</small>
+        </span>
+      </a>
+
+      <div class="auth-copy">
+        <span class="eyebrow">{{ 'Ambiente seguro' if is_production else 'Ambiente de testes' }}</span>
+        <h1>Acesse sua conta</h1>
+        <p>Informe usuario e senha para entrar no sistema.</p>
+      </div>
+
+      {% if erro %}
+        <div class="alert alert-danger">{{ erro }}</div>
+      {% endif %}
+
+      <form method="post" class="auth-form">
+        <div class="form-group">
+          <label for="usuario">Usuario</label>
+          <input type="text" id="usuario" name="usuario" autocomplete="username" required autofocus>
+        </div>
+
+        <div class="form-group">
+          <label for="senha">Senha</label>
+          <input type="password" id="senha" name="senha" autocomplete="current-password" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Entrar</button>
+      </form>
+
+      <p class="field-help auth-help">Ainda nao tem acesso? <a href="{{ url_for('cadastro') }}">Crie sua conta</a>.</p>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block title %}Editar Pagador | Orçamento Pessoal{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <span class="eyebrow">Cadastro</span>
+    <h1>Editar pagador</h1>
+    <p>Mantenha o cadastro de responsáveis organizado para relatórios mais claros.</p>
+  </div>
+</section>
+
+<section class="panel form-panel">
+  <form method="post">
+    <div class="form-group">
+      <label for="nome">Nome do pagador</label>
+      <input type="text" id="nome" name="nome" value="{{ pagador[1] }}" required>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Salvar</button>
+      <a href="{{ url_for('pagadores') }}" class="btn btn-secondary">Cancelar</a>
+    </div>
+  </form>
+
+  <form method="post" action="{{ url_for('excluir_pagador', id=pagador[0]) }}" class="danger-zone" onsubmit="return confirm('Excluir este pagador?');">
+    <button type="submit" class="btn btn-danger">Excluir pagador</button>
+  </form>
+</section>
+{% endblock %}

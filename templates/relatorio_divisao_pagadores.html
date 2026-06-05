@@ -1,0 +1,435 @@
+{% extends 'base.html' %}
+
+{% block title %}Divisao por Pagadores | Orcamento Pessoal{% endblock %}
+{% block pdf_subtitle %}
+{% if pagador_detalhe_nome %}
+<p>Detalhamento do total a pagar de {{ pagador_detalhe_nome }}.</p>
+{% else %}
+<p>Rateio de despesas por pagador com base na fatura apurada ou no fechamento mensal consolidado.</p>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+{% if pdf_mode %}
+<section class="pdf-meta-grid">
+  <article class="pdf-meta-card">
+    <span class="metric-label">Base da analise</span>
+    <strong>{{ 'Fatura do cartao' if modo_analise == 'fatura' else 'Fechamento mensal' }}</strong>
+    <small>{{ fatura_competencia[5:7] ~ '/' ~ fatura_competencia[0:4] if modo_analise == 'fatura' else fechamento_competencia[5:7] ~ '/' ~ fechamento_competencia[0:4] }}</small>
+  </article>
+  <article class="pdf-meta-card">
+    <span class="metric-label">Escopo</span>
+    <strong>{{ pagador_detalhe_nome or 'Todos os pagadores' }}</strong>
+    <small>
+      {% if forma_pagamento_filtro %}
+        {% for forma in cartoes %}
+          {% if forma_pagamento_filtro|string == forma[0]|string %}{{ forma[1] }}{% endif %}
+        {% endfor %}
+      {% else %}
+        Todos os cartoes
+      {% endif %}
+    </small>
+  </article>
+  <article class="pdf-meta-card">
+    <span class="metric-label">Leitura do calculo</span>
+    <strong>Rateio igualitario</strong>
+    <small>Quando um lancamento tem mais de um pagador, o valor e dividido em partes iguais.</small>
+  </article>
+</section>
+
+<section class="pdf-summary-grid">
+  <article class="pdf-summary-card">
+    <span class="metric-label">Despesas analisadas</span>
+    <strong>R$ {{ '%.2f'|format(total_despesas or 0) }}</strong>
+    <small>Total de despesas consideradas no calculo</small>
+  </article>
+  <article class="pdf-summary-card">
+    <span class="metric-label">Pessoas na divisao</span>
+    <strong>{{ resumo_pagadores|length }}</strong>
+    <small>Pagadores encontrados na fatura</small>
+  </article>
+  <article class="pdf-summary-card">
+    <span class="metric-label">Lancamentos</span>
+    <strong>{{ detalhes|length }}</strong>
+    <small>Itens usados na apuracao</small>
+  </article>
+  <article class="pdf-summary-card">
+    <span class="metric-label">Maior total individual</span>
+    <strong>R$ {{ '%.2f'|format((resumo_pagadores[0].total if resumo_pagadores else 0) or 0) }}</strong>
+    <small>{{ resumo_pagadores[0].nome if resumo_pagadores else 'Sem dados' }}</small>
+  </article>
+</section>
+
+<section class="pdf-report-section">
+  <div class="pdf-section-header">
+    <div>
+      <h2>Resumo por pagador</h2>
+      <p>Quem assume maior parcela da fatura e quantos lancamentos compoem cada total.</p>
+    </div>
+  </div>
+  <table class="pdf-report-table">
+    <thead>
+      <tr>
+        <th style="width: 34%;">Pagador</th>
+        <th style="width: 18%;">Lancamentos</th>
+        <th style="width: 24%;">Total a pagar</th>
+        <th style="width: 24%;">Participacao</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in resumo_pagadores %}
+      <tr>
+        <td><strong>{{ item.nome }}</strong></td>
+        <td>{{ item.quantidade_lancamentos }}</td>
+        <td class="cell-amount">R$ {{ '%.2f'|format(item.total or 0) }}</td>
+        <td>{{ '%.1f'|format(((item.total / total_despesas) * 100) if total_despesas else 0) }}%</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<div class="pdf-stacked-sections">
+  {% for item in resumo_pagadores %}
+  <section class="pdf-report-section">
+    <div class="pdf-section-header">
+      <div>
+        <h2>{{ item.nome }}</h2>
+        <p>{{ item.quantidade_lancamentos }} lancamento(s) compoem o total de R$ {{ '%.2f'|format(item.total or 0) }}.</p>
+      </div>
+      <span class="pdf-inline-note">{{ '%.1f'|format(((item.total / total_despesas) * 100) if total_despesas else 0) }}% da base analisada</span>
+    </div>
+    <table class="pdf-report-table">
+      <thead>
+        <tr>
+          <th style="width: 12%;">Compra</th>
+          <th style="width: 12%;">Fatura</th>
+          <th style="width: 16%;">Categoria</th>
+          <th style="width: 28%;">Descricao</th>
+          <th style="width: 12%;">Cartao</th>
+          <th style="width: 10%;">Valor total</th>
+          <th style="width: 10%;">Cota</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for detalhe in item.itens %}
+        <tr>
+          <td>{{ detalhe.data }}</td>
+          <td>{{ detalhe.competencia_cartao }}</td>
+          <td>{{ detalhe.categoria }}</td>
+          <td>{{ detalhe.descricao }}</td>
+          <td>{{ detalhe.forma_pagamento }}</td>
+          <td class="cell-amount">R$ {{ '%.2f'|format(detalhe.valor_total or 0) }}</td>
+          <td class="cell-amount">R$ {{ '%.2f'|format(detalhe.valor_por_pessoa or 0) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  {% endfor %}
+</div>
+{% else %}
+<section class="page-header">
+  <div>
+    <span class="eyebrow">Relatorio</span>
+    <h1>Rateio por pagadores</h1>
+    <p>Distribua as despesas pelo que realmente entrou na fatura apurada ou no fechamento mensal.</p>
+  </div>
+</section>
+
+<section class="panel period-filter">
+  <form method="get" action="{{ url_for('relatorio_divisao_pagadores') }}">
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="modoAnalise">Base da analise</label>
+        <select name="modo_analise" id="modoAnalise">
+          <option value="fatura" {{ 'selected' if modo_analise == 'fatura' else '' }}>Fatura do cartao</option>
+          <option value="fechamento" {{ 'selected' if modo_analise == 'fechamento' else '' }}>Fechamento mensal</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="formaPagamento">Cartao</label>
+        <select name="forma_pagamento_id" id="formaPagamento">
+          <option value="">Todos os cartoes</option>
+          {% for forma in cartoes %}
+          <option value="{{ forma[0] }}" {% if forma_pagamento_filtro|string == forma[0]|string %}selected{% endif %}>{{ forma[1] }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="faturaCompetencia">Competencia base</label>
+        <input type="month" name="fatura_competencia" id="faturaCompetencia" value="{{ fatura_competencia if modo_analise == 'fatura' else fechamento_competencia }}">
+      </div>
+      <div class="form-group">
+        <label for="competenciaInicio">Periodo inicial</label>
+        <input type="text" name="competencia_inicio" id="competenciaInicio" maxlength="7" placeholder="MM/AAAA" pattern="\d{2}/\d{4}" value="{{ competencia_inicio or '' }}">
+      </div>
+      <div class="form-group">
+        <label for="competenciaFim">Periodo final</label>
+        <input type="text" name="competencia_fim" id="competenciaFim" maxlength="7" placeholder="MM/AAAA" pattern="\d{2}/\d{4}" value="{{ competencia_fim or '' }}">
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Calcular divisao</button>
+      <a href="{{ url_for('relatorio_divisao_pagadores') }}" class="btn btn-secondary">Limpar filtros</a>
+    </div>
+  </form>
+</section>
+
+<section class="metric-grid budget-summary">
+  <article class="metric-card negative">
+    <span class="metric-label">Despesas analisadas</span>
+    <strong>R$ {{ '%.2f'|format(total_despesas or 0) }}</strong>
+    <small>Total das despesas consideradas</small>
+  </article>
+  <article class="metric-card">
+    <span class="metric-label">Pessoas na divisao</span>
+    <strong>{{ resumo_pagadores|length }}</strong>
+    <small>Participantes encontrados nos lancamentos</small>
+  </article>
+  <article class="metric-card">
+    <span class="metric-label">Lancamentos</span>
+    <strong>{{ detalhes|length }}</strong>
+    <small>Itens usados no calculo</small>
+  </article>
+  <article class="metric-card">
+    <span class="metric-label">Base usada</span>
+    <strong>{{ 'Fatura do cartao' if modo_analise == 'fatura' else 'Fechamento mensal' }}</strong>
+    <small>{{ fatura_competencia[5:7] ~ '/' ~ fatura_competencia[0:4] if modo_analise == 'fatura' else fechamento_competencia[5:7] ~ '/' ~ fechamento_competencia[0:4] }}</small>
+  </article>
+</section>
+
+<section class="content-grid">
+  <article class="table-container">
+    <div class="table-toolbar">
+      <div>
+        <h2>Total por pessoa</h2>
+        <p>Toque ou clique na linha para abrir o detalhamento dos lancamentos.</p>
+      </div>
+    </div>
+    <div class="mobile-pagadores-list">
+      {% for item in resumo_pagadores %}
+      <details class="pagador-detail-card">
+        <summary>
+          <div>
+            <strong>{{ item.nome }}</strong>
+            <small>{{ item.quantidade_lancamentos }} lancamento(s)</small>
+          </div>
+          <span class="amount-negative">R$ {{ '%.2f'|format(item.total or 0) }}</span>
+        </summary>
+        <div class="pagador-detail-body">
+          <div class="pagador-detail-actions no-print">
+            <a
+              href="{{ current_url_with(pdf='1', pagador_detalhe=item.slug) }}"
+              class="btn btn-secondary"
+              target="_blank"
+              rel="noopener"
+            >
+              PDF deste pagador
+            </a>
+          </div>
+          {% for detalhe in item.itens %}
+          <article class="pagador-item-card">
+            <div class="pagador-item-top">
+              <strong>{{ detalhe.categoria }}</strong>
+              <span class="amount-negative">R$ {{ '%.2f'|format(detalhe.valor_por_pessoa or 0) }}</span>
+            </div>
+            <p>{{ detalhe.descricao }}</p>
+            <div class="pagador-item-meta">
+              <span>{{ detalhe.data }}</span>
+              <span>Fatura {{ detalhe.competencia_cartao }}</span>
+              <span>{{ detalhe.forma_pagamento }}</span>
+              <span>Total R$ {{ '%.2f'|format(detalhe.valor_total or 0) }}</span>
+            </div>
+          </article>
+          {% endfor %}
+        </div>
+      </details>
+      {% endfor %}
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Pagador</th>
+          <th>Total a pagar</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in resumo_pagadores %}
+        <tr class="pagador-summary-row" data-target="pagador-{{ item.slug }}">
+          <td><strong>{{ item.nome }}</strong></td>
+          <td><span class="amount-negative">R$ {{ '%.2f'|format(item.total or 0) }}</span></td>
+          <td class="pagador-action-cell">
+            <button
+              type="button"
+              class="btn btn-secondary pagador-toggle"
+              data-target="pagador-{{ item.slug }}"
+              aria-expanded="false"
+            >
+              Ver detalhes
+            </button>
+          </td>
+        </tr>
+        <tr class="pagador-detail-row is-hidden" id="pagador-{{ item.slug }}">
+          <td colspan="3">
+            <div class="pagador-detail-panel">
+              <div class="pagador-detail-header">
+                <strong>{{ item.nome }}</strong>
+                <span>{{ item.quantidade_lancamentos }} lancamento(s) vinculados</span>
+              </div>
+              <div class="pagador-detail-actions no-print">
+                <a
+                  href="{{ current_url_with(pdf='1', pagador_detalhe=item.slug) }}"
+                  class="btn btn-secondary"
+                  target="_blank"
+                  rel="noopener"
+                >
+                  PDF deste pagador
+                </a>
+              </div>
+              <div class="pagador-detail-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Compra</th>
+                      <th>Fatura</th>
+                      <th>Categoria</th>
+                      <th>Descricao</th>
+                      <th>Cartao</th>
+                      <th>Pagador informado</th>
+                      <th>Valor total</th>
+                      <th>Cota deste pagador</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for detalhe in item.itens %}
+                    <tr>
+                      <td>{{ detalhe.data }}</td>
+                      <td>{{ detalhe.competencia_cartao }}</td>
+                      <td>
+                        <strong>
+                          <a href="{{ url_for('lancamentos', tipo='despesa', forma_pagamento_id=forma_pagamento_filtro, fatura_competencia=fatura_competencia if modo_analise == 'fatura' else '', data_inicio=competencia_inicio if modo_analise != 'fatura' else '', data_fim=competencia_fim if modo_analise != 'fatura' else '', pagador=item.nome, busca=detalhe.categoria) }}">{{ detalhe.categoria }}</a>
+                        </strong>
+                      </td>
+                      <td>{{ detalhe.descricao }}</td>
+                      <td>{{ detalhe.forma_pagamento }}</td>
+                      <td>{{ detalhe.pagador_informado }}</td>
+                      <td>R$ {{ '%.2f'|format(detalhe.valor_total or 0) }}</td>
+                      <td><span class="amount-negative">R$ {{ '%.2f'|format(detalhe.valor_por_pessoa or 0) }}</span></td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </article>
+
+  <article class="panel">
+    <div class="panel-header">
+      <div>
+        <h2>Leitura da regra</h2>
+        <p>O sistema divide igualmente quando o campo pagador traz mais de um nome.</p>
+      </div>
+    </div>
+    <ul class="check-list">
+      <li><strong>Jefferson</strong> assume 100% da despesa.</li>
+      <li><strong>Juliana e Jefferson</strong> divide em duas partes iguais.</li>
+      <li><strong>Ana e Bruno e Carla</strong> divide em tres partes iguais.</li>
+      <li>No modo fatura, entram apenas itens vinculados a essa competencia do cartao.</li>
+    </ul>
+  </article>
+</section>
+
+<section class="table-container table-section">
+  <div class="table-toolbar">
+    <div>
+      <h2>Detalhamento da divisao</h2>
+      <p>Confira os itens que entraram no calculo e a competencia do cartao.</p>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Compra</th>
+        <th>Fatura</th>
+        <th>Categoria</th>
+        <th>Descricao</th>
+        <th>Pagador informado</th>
+        <th>Cartao</th>
+        <th>Participantes</th>
+        <th>Valor total</th>
+        <th>Valor por pessoa</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in detalhes %}
+      <tr>
+        <td>{{ item.data }}</td>
+        <td>{{ item.competencia_cartao }}</td>
+        <td><strong>{{ item.categoria }}</strong></td>
+        <td>{{ item.descricao }}</td>
+        <td>{{ item.pagador }}</td>
+        <td>{{ item.forma_pagamento }}</td>
+        <td>{{ item.participantes|join(', ') }}</td>
+        <td>R$ {{ '%.2f'|format(item.valor_total or 0) }}</td>
+        <td><span class="amount-negative">R$ {{ '%.2f'|format(item.valor_por_pessoa or 0) }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if not pdf_mode %}
+<script>
+function mascaraCompetencia(input) {
+  if (!input) return;
+  input.addEventListener('input', function(e) {
+    let v = e.target.value.replace(/\D/g, '');
+    if (v.length > 2) v = v.slice(0, 2) + '/' + v.slice(2, 6);
+    e.target.value = v.slice(0, 7);
+  });
+}
+mascaraCompetencia(document.getElementById('competenciaInicio'));
+mascaraCompetencia(document.getElementById('competenciaFim'));
+
+document.querySelectorAll('.pagador-toggle').forEach(function(button) {
+  button.addEventListener('click', function() {
+    const targetId = button.getAttribute('data-target');
+    const detailRow = document.getElementById(targetId);
+    if (!detailRow) return;
+
+    const isHidden = detailRow.classList.contains('is-hidden');
+    detailRow.classList.toggle('is-hidden');
+    button.setAttribute('aria-expanded', String(isHidden));
+    button.textContent = isHidden ? 'Ocultar detalhes' : 'Ver detalhes';
+  });
+});
+
+document.querySelectorAll('.pagador-summary-row').forEach(function(row) {
+  row.addEventListener('click', function(event) {
+    if (event.target.closest('button')) return;
+    const toggle = row.querySelector('.pagador-toggle');
+    if (toggle) {
+      toggle.click();
+    }
+  });
+});
+
+if (document.body.classList.contains('pdf-mode')) {
+  document.querySelectorAll('.pagador-detail-row').forEach(function(row) {
+    row.classList.remove('is-hidden');
+  });
+}
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,498 @@
+{% extends 'base.html' %}
+
+{% block title %}Minha vida financeira | Orcamento Pessoal{% endblock %}
+
+{% block extra_head %}
+  {% if not pdf_mode %}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  {% endif %}
+{% endblock %}
+
+{% block pdf_subtitle %}
+<p>Resumo mensal com receitas, despesas, fatura e leitura de orcamento para {{ competencia_label }}.</p>
+{% endblock %}
+
+{% block content %}
+{% if pdf_mode %}
+<section class="pdf-meta-grid">
+  <article class="pdf-meta-card">
+    <span class="metric-label">Competencia</span>
+    <strong>{{ competencia_label }}</strong>
+    <small>Mes base do relatorio</small>
+  </article>
+  <article class="pdf-meta-card">
+    <span class="metric-label">Filtro de categoria</span>
+    <strong>
+      {% for c in categorias_opcoes %}
+        {% if filtros.categoria_id|string == c[0]|string %}{{ c[1] }}{% endif %}
+      {% endfor %}
+      {% if not filtros.categoria_id %}Todas as categorias{% endif %}
+    </strong>
+    <small>{{ filtros.pagador or 'Todos os pagadores' }}</small>
+  </article>
+  <article class="pdf-meta-card">
+    <span class="metric-label">Forma de pagamento</span>
+    <strong>
+      {% for forma in formas_pagamento %}
+        {% if filtros.forma_pagamento_id|string == forma[0]|string %}{{ forma[1] }}{% endif %}
+      {% endfor %}
+      {% if not filtros.forma_pagamento_id %}Todas as formas{% endif %}
+    </strong>
+    <small>Recorte usado nas despesas e faturas</small>
+  </article>
+</section>
+
+<section class="pdf-summary-grid">
+  <article class="pdf-summary-card">
+    <span class="metric-label">Receitas do mes</span>
+    <strong>R$ {{ '%.2f'|format(total_receita or 0) }}</strong>
+    <small>Entradas do mes conforme filtros</small>
+  </article>
+  <article class="pdf-summary-card">
+    <span class="metric-label">Despesas do mes</span>
+    <strong>R$ {{ '%.2f'|format(total_despesa or 0) }}</strong>
+    <small>{{ total_lancamentos }} lancamento(s) encontrados</small>
+  </article>
+  <article class="pdf-summary-card">
+    <span class="metric-label">Saldo do mes</span>
+    <strong>R$ {{ '%.2f'|format(saldo or 0) }}</strong>
+    <small>{{ 'Receitas acima das despesas' if saldo >= 0 else 'Despesas acima das receitas' }}</small>
+  </article>
+  <article class="pdf-summary-card">
+    <span class="metric-label">Fatura do mes</span>
+    <strong>R$ {{ '%.2f'|format(total_fatura_mes or 0) }}</strong>
+    <small>{{ total_faturas }} fatura(s) apurada(s)</small>
+  </article>
+</section>
+
+<section class="pdf-two-column">
+  <section class="pdf-report-section">
+    <div class="pdf-section-header">
+      <div>
+        <h2>Leitura executiva</h2>
+        <p>Indicadores centrais para o fechamento mensal.</p>
+      </div>
+    </div>
+    <table class="pdf-report-table">
+      <tbody>
+        <tr>
+          <th style="width: 44%;">Orcamento usado</th>
+          <td>{{ '%.1f'|format(percentual_consumido or 0) }}%</td>
+        </tr>
+        <tr>
+          <th>% estourado</th>
+          <td>{{ '%.1f'|format(percentual_estourado or 0) }}%</td>
+        </tr>
+        <tr>
+          <th>Maior gasto</th>
+          <td>{{ maior_gasto[0] }} - R$ {{ '%.2f'|format(maior_gasto[1] or 0) }}</td>
+        </tr>
+        <tr>
+          <th>Planejado x realizado</th>
+          <td>R$ {{ '%.2f'|format(total_planejado or 0) }} planejado / R$ {{ '%.2f'|format(total_realizado or 0) }} realizado</td>
+        </tr>
+        <tr>
+          <th>Itens sem fatura</th>
+          <td>{{ despesas_cartao_sem_fatura }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="pdf-report-section">
+    <div class="pdf-section-header">
+      <div>
+        <h2>Top categorias do mes</h2>
+        <p>Despesas por categoria em ordem de maior impacto.</p>
+      </div>
+    </div>
+    <table class="pdf-report-table">
+      <thead>
+        <tr>
+          <th style="width: 60%;">Categoria</th>
+          <th style="width: 40%;">Despesa</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for categoria in categorias %}
+        <tr>
+          <td>{{ categoria }}</td>
+          <td class="cell-amount">R$ {{ '%.2f'|format(gastos[loop.index0] or 0) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</section>
+
+<section class="pdf-report-section">
+  <div class="pdf-section-header">
+    <div>
+      <h2>Orcamento por categoria</h2>
+      <p>Comparativo entre valor planejado e realizado nas categorias acompanhadas.</p>
+    </div>
+  </div>
+  <table class="pdf-report-table">
+    <thead>
+      <tr>
+        <th style="width: 28%;">Categoria</th>
+        <th style="width: 14%;">% receita</th>
+        <th style="width: 18%;">Planejado</th>
+        <th style="width: 18%;">Realizado</th>
+        <th style="width: 10%;">Consumo</th>
+        <th style="width: 12%;">Diferenca</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for cat in orcamento_categorias %}
+      <tr>
+        <td>{{ cat.categoria }}</td>
+        <td>{{ '%.2f'|format(cat.percentual or 0) }}%</td>
+        <td class="cell-amount">R$ {{ '%.2f'|format(cat.planejado or 0) }}</td>
+        <td class="cell-amount">R$ {{ '%.2f'|format(cat.realizado or 0) }}</td>
+        <td>{{ '%.1f'|format(cat.porcentagem or 0) }}%</td>
+        <td class="cell-amount">
+          {% if cat.restante < 0 %}
+            -R$ {{ '%.2f'|format((cat.restante|abs) or 0) }}
+          {% else %}
+            R$ {{ '%.2f'|format(cat.restante or 0) }}
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="pdf-report-section">
+  <div class="pdf-section-header">
+    <div>
+      <h2>Historico de faturas e medias</h2>
+      <p>Evolucao das faturas nos ultimos meses e media por categoria.</p>
+    </div>
+  </div>
+  <div class="pdf-two-column">
+    <div>
+      <table class="pdf-report-table">
+        <thead>
+          <tr>
+            <th style="width: 40%;">Competencia</th>
+            <th style="width: 60%;">Total fatura</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for label in evolucao_labels %}
+          <tr>
+            <td>{{ label }}</td>
+            <td class="cell-amount">R$ {{ '%.2f'|format(evolucao_faturas[loop.index0] or 0) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <table class="pdf-report-table">
+        <thead>
+          <tr>
+            <th style="width: 65%;">Categoria</th>
+            <th style="width: 35%;">Media mensal</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in medias_categoria %}
+          <tr>
+            <td>{{ item.categoria }}</td>
+            <td class="cell-amount">R$ {{ '%.2f'|format(item.media or 0) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% else %}
+<section class="page-header finance-header">
+  <div>
+    <span class="eyebrow">Visao mensal</span>
+    <h1>Minha vida financeira</h1>
+    <p>Receitas, gastos, orcamento e fatura consolidados para {{ competencia_label }}.</p>
+  </div>
+  <div class="quick-actions">
+    <a class="btn btn-secondary" href="{{ url_for('fatura_cartao', competencia=competencia) }}">Ver fatura</a>
+    <a class="btn btn-primary" href="{{ url_for('lancamentos') }}">Novo lancamento</a>
+  </div>
+</section>
+
+<section class="panel period-filter finance-filter-panel">
+  <form method="get" action="{{ url_for('index') }}" class="filters-form finance-filters">
+    <div>
+      <label for="competencia">Mes</label>
+      <input type="month" id="competencia" name="competencia" value="{{ filtros.competencia }}" required>
+    </div>
+    <div>
+      <label for="categoria_id">Categoria</label>
+      <select id="categoria_id" name="categoria_id">
+        <option value="">Todas</option>
+        {% for c in categorias_opcoes %}
+        <option value="{{ c[0] }}" {{ 'selected' if filtros.categoria_id|string == c[0]|string else '' }}>{{ c[1] }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="forma_pagamento_id">Forma</label>
+      <select id="forma_pagamento_id" name="forma_pagamento_id">
+        <option value="">Todas</option>
+        {% for forma in formas_pagamento %}
+        <option value="{{ forma[0] }}" {{ 'selected' if filtros.forma_pagamento_id|string == forma[0]|string else '' }}>{{ forma[1] }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="pagador">Pagador</label>
+      <select id="pagador" name="pagador">
+        <option value="">Todos</option>
+        {% for pagador in pagadores %}
+        <option value="{{ pagador }}" {{ 'selected' if filtros.pagador == pagador else '' }}>{{ pagador }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-actions">
+      <button type="submit" class="btn btn-primary">Atualizar</button>
+      <a href="{{ url_for('index') }}" class="btn btn-secondary">Limpar</a>
+    </div>
+  </form>
+</section>
+
+<section class="metric-grid finance-metrics">
+  <article class="metric-card">
+    <span class="metric-label">Receitas do mes</span>
+    <strong>R$ {{ '%.2f'|format(total_receita or 0) }}</strong>
+    <small>Somente {{ competencia_label }} conforme filtros</small>
+  </article>
+  <article class="metric-card">
+    <span class="metric-label">Despesas do mes</span>
+    <strong>R$ {{ '%.2f'|format(total_despesa or 0) }}</strong>
+    <small>{{ total_lancamentos }} lancamento(s) encontrados</small>
+  </article>
+  <article class="metric-card {{ 'positive' if saldo >= 0 else 'negative' }}">
+    <span class="metric-label">Saldo do mes</span>
+    <strong>R$ {{ '%.2f'|format(saldo or 0) }}</strong>
+    <small>{{ 'Receitas acima das despesas' if saldo >= 0 else 'Despesas acima das receitas' }}</small>
+  </article>
+  <article class="metric-card">
+    <span class="metric-label">Fatura do mes</span>
+    <strong>R$ {{ '%.2f'|format(total_fatura_mes or 0) }}</strong>
+    <small>{{ total_faturas }} fatura(s); {{ despesas_cartao_sem_fatura }} item(ns) sem fatura</small>
+  </article>
+</section>
+
+<section class="metric-grid finance-indicators">
+  <article class="metric-card">
+    <span class="metric-label">Orcamento usado</span>
+    <strong>{{ '%.1f'|format(percentual_consumido or 0) }}%</strong>
+    <small>R$ {{ '%.2f'|format(total_realizado or 0) }} de R$ {{ '%.2f'|format(total_planejado or 0) }}</small>
+  </article>
+  <article class="metric-card {{ 'negative' if percentual_estourado > 0 else 'positive' }}">
+    <span class="metric-label">% estourado</span>
+    <strong>{{ '%.1f'|format(percentual_estourado or 0) }}%</strong>
+    <small>{% if estouro_orcamento > 0 %}R$ {{ '%.2f'|format(estouro_orcamento) }} acima do planejado{% else %}Sem estouro no periodo{% endif %}</small>
+  </article>
+  <article class="metric-card">
+    <span class="metric-label">Maior gasto</span>
+    <strong>{{ maior_gasto[0] }}</strong>
+    <small>R$ {{ '%.2f'|format(maior_gasto[1] or 0) }}</small>
+  </article>
+</section>
+
+<section class="panel finance-progress">
+  <div class="panel-header">
+    <div>
+      <h2>Planejamento do mes</h2>
+      <p>O limite previsto usa os percentuais cadastrados nas categorias de despesa.</p>
+    </div>
+    <span class="pill">R$ {{ '%.2f'|format(total_realizado or 0) }} realizado</span>
+  </div>
+  <div class="progress large {{ 'over' if percentual_consumido > 100 else '' }}">
+    <span style="width: {{ percentual_consumido if percentual_consumido <= 100 else 100 }}%"></span>
+  </div>
+</section>
+
+<section class="content-grid finance-content-grid">
+  <article class="panel wide-panel">
+    <div class="panel-header">
+      <div>
+        <h2>Evolucao das faturas</h2>
+        <p>Valor das faturas apuradas nos ultimos 6 meses.</p>
+      </div>
+    </div>
+    <div class="chart-box chart-box-large">
+      <canvas id="graficoEvolucao"></canvas>
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="panel-header">
+      <div>
+        <h2>Gastos por categoria</h2>
+        <p>Distribuicao das despesas em {{ competencia_label }}.</p>
+      </div>
+    </div>
+    <div class="chart-box">
+      <canvas id="graficoCategorias"></canvas>
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="panel-header">
+      <div>
+        <h2>Previsao x realizado</h2>
+        <p>Quanto foi planejado e quanto ja saiu.</p>
+      </div>
+    </div>
+    <div class="chart-box">
+      <canvas id="graficoComparativo"></canvas>
+    </div>
+  </article>
+</section>
+
+<section class="content-grid finance-content-grid finance-tables">
+  <article class="panel">
+    <div class="panel-header">
+      <div>
+        <h2>Media mensal por categoria</h2>
+        <p>Top categorias nos ultimos 6 meses.</p>
+      </div>
+    </div>
+    <div class="finance-list">
+      {% for item in medias_categoria %}
+      <div class="finance-list-row">
+        <span>{{ item.categoria }}</span>
+        <strong>R$ {{ '%.2f'|format(item.media or 0) }}</strong>
+      </div>
+      {% else %}
+      <p class="muted">Sem despesas para calcular media.</p>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="panel-header">
+      <div>
+        <h2>Categorias acompanhadas</h2>
+        <p>Leitura rapida do orcamento mensal.</p>
+      </div>
+    </div>
+    <div class="finance-list">
+      {% for cat in orcamento_categorias[:6] %}
+      <div class="finance-list-row stacked">
+        <div>
+          <span>{{ cat.categoria }}</span>
+          <small>{{ '%.1f'|format(cat.porcentagem or 0) }}% usado</small>
+        </div>
+        <strong>R$ {{ '%.2f'|format(cat.realizado or 0) }}</strong>
+      </div>
+      {% else %}
+      <p class="muted">Sem categorias de despesa cadastradas.</p>
+      {% endfor %}
+    </div>
+  </article>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if not pdf_mode %}
+<script>
+  const categorias = {{ categorias|tojson }};
+  const gastos = {{ gastos|tojson }};
+  const planejado = {{ planejado|tojson }};
+  const evolucaoLabels = {{ evolucao_labels|tojson }};
+  const evolucaoFaturas = {{ evolucao_faturas|tojson }};
+  const evolucaoFaturasCartoes = {{ evolucao_faturas_cartoes|tojson }};
+
+  const moeda = (value) => new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  }).format(value || 0);
+
+  const baseOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { labels: { color: '#3d4754', boxWidth: 12 } },
+      tooltip: {
+        callbacks: {
+          label: (context) => `${context.dataset.label}: ${moeda(context.raw)}`
+        }
+      }
+    },
+    scales: {
+      x: { ticks: { color: '#64717f' }, grid: { display: false } },
+      y: { ticks: { color: '#64717f' }, grid: { color: '#e7eaee' }, beginAtZero: true }
+    }
+  };
+
+  new Chart(document.getElementById('graficoEvolucao'), {
+    type: 'line',
+    data: {
+      labels: evolucaoLabels,
+      datasets: [{
+        label: 'Total das faturas',
+        data: evolucaoFaturas,
+        borderColor: '#0f766e',
+        backgroundColor: 'rgba(15, 118, 110, 0.10)',
+        tension: 0.32,
+        fill: true
+      }].concat(evolucaoFaturasCartoes.map((item, index) => ({
+        label: item.cartao,
+        data: item.valores,
+        borderColor: ['#3d4754', '#8a96a3', '#b54708', '#15803d'][index % 4],
+        backgroundColor: 'transparent',
+        tension: 0.32,
+        fill: false
+      })))
+    },
+    options: baseOptions
+  });
+
+  new Chart(document.getElementById('graficoCategorias'), {
+    type: 'bar',
+    data: {
+      labels: categorias,
+      datasets: [{
+        label: 'Despesas',
+        data: gastos,
+        backgroundColor: '#0f766e',
+        borderRadius: 6
+      }]
+    },
+    options: {
+      ...baseOptions,
+      plugins: { ...baseOptions.plugins, legend: { display: false } }
+    }
+  });
+
+  new Chart(document.getElementById('graficoComparativo'), {
+    type: 'bar',
+    data: {
+      labels: categorias,
+      datasets: [
+        {
+          label: 'Planejado',
+          data: planejado,
+          backgroundColor: '#8a96a3',
+          borderRadius: 6
+        },
+        {
+          label: 'Realizado',
+          data: gastos,
+          backgroundColor: '#0f766e',
+          borderRadius: 6
+        }
+      ]
+    },
+    options: baseOptions
+  });
+</script>
+{% endif %}
+{% endblock %}

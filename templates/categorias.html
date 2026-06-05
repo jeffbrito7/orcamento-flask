@@ -1,0 +1,218 @@
+{% extends 'base.html' %}
+
+{% block title %}Categorias | Orçamento Pessoal{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <span class="eyebrow">Cadastro</span>
+    <h1>Categorias</h1>
+    <p>Separe categorias de receita e despesa. Apenas despesas entram no planejamento de orçamento.</p>
+  </div>
+  <button type="button" class="btn btn-primary" id="abrirModalCategoria">Adicionar categoria</button>
+</section>
+
+{% if erro %}
+<div class="alert alert-danger">{{ erro }}</div>
+{% endif %}
+
+<section class="metric-grid category-summary">
+  <article class="metric-card {{ 'negative' if total_percentual > 100 else 'positive' }}">
+    <span class="metric-label">Percentual planejado</span>
+    <strong>{{ '%.2f'|format(total_percentual or 0) }}%</strong>
+    <small>Total distribuído nas categorias de despesa</small>
+  </article>
+  <article class="metric-card">
+    <span class="metric-label">Disponível</span>
+    <strong>{{ '%.2f'|format(percentual_disponivel or 0) }}%</strong>
+    <small>Limite restante até 100%</small>
+  </article>
+</section>
+
+<section class="table-container table-section">
+  <div class="table-toolbar">
+    <div>
+      <h2>Categorias cadastradas</h2>
+      <p>{{ categorias|length }} categoria(s) cadastrada(s)</p>
+    </div>
+    <span class="pill">{{ '%.2f'|format(total_percentual or 0) }}% de 100%</span>
+  </div>
+
+  <table class="categories-table">
+    <thead>
+      <tr>
+        <th>Código</th>
+        <th>Nome</th>
+        <th>Tipo</th>
+        <th>Percentual planejado</th>
+        <th class="actions-column">Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in categorias %}
+      {% set percentual = c[2] or 0 %}
+      {% set tipo = c[3] or 'despesa' %}
+      <tr>
+        <td class="muted">#{{ c[0] }}</td>
+        <td><strong>{{ c[1] }}</strong></td>
+        <td><span class="status {{ tipo }}">{{ tipo }}</span></td>
+        <td>
+          {% if tipo == 'despesa' %}
+          <div class="percent-cell">
+            <span>{{ '%.2f'|format(percentual) }}%</span>
+            <div class="progress">
+              <span style="width: {{ percentual if percentual <= 100 else 100 }}%"></span>
+            </div>
+          </div>
+          {% else %}
+          <span class="muted">Não entra no orçamento</span>
+          {% endif %}
+        </td>
+        <td class="actions-column">
+          <button
+            type="button"
+            class="link-action"
+            data-id="{{ c[0] }}"
+            data-nome="{{ c[1] }}"
+            data-percentual="{{ percentual }}"
+            data-tipo="{{ tipo }}"
+            onclick="abrirEdicaoCategoria(this)"
+          >
+            Editar
+          </button>
+          <form action="{{ url_for('excluir_categoria', id=c[0]) }}" method="post" class="inline-action" onsubmit="return confirm('Excluir esta categoria? Esta ação não pode ser desfeita.');">
+            <button type="submit" class="link-action danger-link">Excluir</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr>
+        <th colspan="3">Total planejado para despesas</th>
+        <th>{{ '%.2f'|format(total_percentual or 0) }}%</th>
+        <th>{{ '%.2f'|format(percentual_disponivel or 0) }}% disponível</th>
+      </tr>
+    </tfoot>
+  </table>
+</section>
+
+<div id="modalCategoria" class="modal hidden">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div>
+        <h2 id="tituloModalCategoria">Adicionar categoria</h2>
+        <p class="modal-subtitle" id="subtituloModalCategoria">Disponível para distribuir: {{ '%.2f'|format(percentual_disponivel or 0) }}%</p>
+      </div>
+      <button type="button" class="icon-button" id="fecharModalCategoria" aria-label="Fechar">&times;</button>
+    </div>
+
+    <form id="formCategoria" action="{{ url_for('adicionar_categoria') }}" method="post">
+      <div class="form-group">
+        <label for="nome">Nome da categoria</label>
+        <input type="text" name="nome" id="nome" placeholder="Ex.: Moradia" required>
+      </div>
+
+      <div class="form-group">
+        <label for="tipoCategoria">Tipo da categoria</label>
+        <select name="tipo" id="tipoCategoria" required>
+          <option value="despesa">Despesa</option>
+          <option value="receita">Receita</option>
+        </select>
+        <small class="field-help">Receitas são entradas de dinheiro. Despesas entram no planejamento percentual.</small>
+      </div>
+
+      <div class="form-group">
+        <label for="percentual_orcamento">Percentual planejado</label>
+        <input type="number" step="0.01" min="0" max="{{ percentual_disponivel or 0 }}" name="percentual_orcamento" id="percentual_orcamento" placeholder="0.00">
+        <small class="field-help" id="ajudaPercentual">A soma final não pode ultrapassar 100%.</small>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Salvar categoria</button>
+        <button type="button" class="btn btn-secondary" id="cancelarModalCategoria">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const modalCategoria = document.getElementById('modalCategoria');
+  const abrirModalCategoria = document.getElementById('abrirModalCategoria');
+  const fecharModalCategoria = document.getElementById('fecharModalCategoria');
+  const cancelarModalCategoria = document.getElementById('cancelarModalCategoria');
+  const formCategoria = document.getElementById('formCategoria');
+  const tituloModalCategoria = document.getElementById('tituloModalCategoria');
+  const subtituloModalCategoria = document.getElementById('subtituloModalCategoria');
+  const ajudaPercentual = document.getElementById('ajudaPercentual');
+  const nomeCategoria = document.getElementById('nome');
+  const percentualCategoria = document.getElementById('percentual_orcamento');
+  const tipoCategoria = document.getElementById('tipoCategoria');
+  const percentualDisponivel = Number('{{ percentual_disponivel or 0 }}');
+
+  function fecharModal() {
+    modalCategoria.classList.add('hidden');
+  }
+
+  function configurarPercentualPorTipo() {
+    const ehReceita = tipoCategoria.value === 'receita';
+    percentualCategoria.disabled = ehReceita;
+    if (ehReceita) {
+      percentualCategoria.value = '';
+      ajudaPercentual.textContent = 'Categoria de receita fica sem percentual planejado.';
+      subtituloModalCategoria.textContent = 'Receitas entram como base para calcular o orçamento.';
+    } else {
+      percentualCategoria.disabled = false;
+      percentualCategoria.max = percentualDisponivel.toFixed(2);
+      ajudaPercentual.textContent = 'A soma final não pode ultrapassar 100%.';
+      subtituloModalCategoria.textContent = `Disponível para distribuir: ${percentualDisponivel.toFixed(2)}%`;
+    }
+  }
+
+  abrirModalCategoria.addEventListener('click', () => {
+    formCategoria.action = "{{ url_for('adicionar_categoria') }}";
+    formCategoria.reset();
+    tituloModalCategoria.textContent = 'Adicionar categoria';
+    tipoCategoria.value = 'despesa';
+    configurarPercentualPorTipo();
+    modalCategoria.classList.remove('hidden');
+    nomeCategoria.focus();
+  });
+
+  function abrirEdicaoCategoria(botao) {
+    const id = botao.dataset.id;
+    const nome = botao.dataset.nome;
+    const percentualAtual = Number(botao.dataset.percentual || 0);
+    const tipoAtual = botao.dataset.tipo || 'despesa';
+    const limiteEdicao = tipoAtual === 'despesa' ? percentualDisponivel + percentualAtual : percentualDisponivel;
+
+    formCategoria.action = `/editar_categoria/${id}`;
+    tituloModalCategoria.textContent = 'Editar categoria';
+    nomeCategoria.value = nome;
+    tipoCategoria.value = tipoAtual;
+    percentualCategoria.value = percentualAtual ? percentualAtual.toFixed(2) : '';
+    percentualCategoria.max = limiteEdicao.toFixed(2);
+    percentualCategoria.disabled = tipoAtual === 'receita';
+    subtituloModalCategoria.textContent = tipoAtual === 'despesa'
+      ? `Disponível considerando esta categoria: ${limiteEdicao.toFixed(2)}%`
+      : 'Receitas não consomem percentual do orçamento.';
+    ajudaPercentual.textContent = tipoAtual === 'despesa'
+      ? `As outras categorias já usam ${(100 - limiteEdicao).toFixed(2)}%.`
+      : 'Categoria de receita fica sem percentual planejado.';
+    modalCategoria.classList.remove('hidden');
+    nomeCategoria.focus();
+  }
+
+  tipoCategoria.addEventListener('change', configurarPercentualPorTipo);
+  fecharModalCategoria.addEventListener('click', fecharModal);
+  cancelarModalCategoria.addEventListener('click', fecharModal);
+
+  window.addEventListener('click', (event) => {
+    if (event.target === modalCategoria) {
+      fecharModal();
+    }
+  });
+</script>
+{% endblock %}

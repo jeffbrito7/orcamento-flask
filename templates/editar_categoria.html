@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block title %}Editar Categoria | Orçamento Pessoal{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <span class="eyebrow">Cadastro</span>
+    <h1>Editar categoria</h1>
+    <p>Atualize o nome e o percentual planejado para manter o orçamento consistente.</p>
+  </div>
+</section>
+
+{% if erro %}
+<div class="alert alert-danger">{{ erro }}</div>
+{% endif %}
+
+<section class="panel form-panel">
+  <form method="post">
+    <div class="form-group">
+      <label for="nome">Nome da categoria</label>
+      <input type="text" name="nome" id="nome" value="{{ categoria[1] }}" required>
+    </div>
+
+    <div class="form-group">
+      <label for="percentual_orcamento">Percentual planejado</label>
+      <input type="number" name="percentual_orcamento" id="percentual_orcamento" step="0.01" min="0" max="100" value="{{ categoria[2] or '' }}">
+      {% if total_percentual is defined %}
+      <small class="field-help">Outras categorias já somam {{ '%.2f'|format(total_percentual or 0) }}%.</small>
+      {% endif %}
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Salvar alterações</button>
+      <a href="{{ url_for('categorias') }}" class="btn btn-secondary">Cancelar</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

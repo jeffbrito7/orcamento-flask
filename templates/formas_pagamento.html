@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+
+{% block title %}Formas de Pagamento | Orçamento Pessoal{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <span class="eyebrow">Cadastro</span>
+    <h1>Formas de pagamento</h1>
+    <p>Cadastre como cada lançamento foi pago ou recebido, como dinheiro, cartão de crédito ou PIX.</p>
+  </div>
+  <button type="button" class="btn btn-primary" id="abrirModalForma">Adicionar forma</button>
+</section>
+
+{% if erro %}
+<div class="alert alert-danger">{{ erro }}</div>
+{% endif %}
+
+<section class="metric-grid category-summary">
+  <article class="metric-card">
+    <span class="metric-label">Formas cadastradas</span>
+    <strong>{{ formas|length }}</strong>
+    <small>Disponíveis para uso nos lançamentos</small>
+  </article>
+</section>
+
+<section class="table-container table-section">
+  <div class="table-toolbar">
+    <div>
+      <h2>Lista de formas</h2>
+      <p>Edite ou remova formas que ainda não possuem lançamentos vinculados.</p>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Código</th>
+        <th>Nome</th>
+        <th>Tipo</th>
+        <th>Fechamento</th>
+        <th class="actions-column">Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for forma in formas %}
+      <tr>
+        <td class="muted">#{{ forma[0] }}</td>
+        <td><strong>{{ forma[1] }}</strong></td>
+        <td><span class="status {{ 'pendente' if forma[2] == 'cartao_credito' else 'receita' }}">{{ 'Cartão de crédito' if forma[2] == 'cartao_credito' else 'Outros' }}</span></td>
+        <td>{{ ('Dia ' ~ forma[3]) if forma[2] == 'cartao_credito' and forma[3] else '-' }}</td>
+        <td class="actions-column">
+          <button
+            type="button"
+            class="link-action"
+            data-id="{{ forma[0] }}"
+            data-nome="{{ forma[1] }}"
+            data-tipo="{{ forma[2] }}"
+            data-dia-fechamento="{{ forma[3] or '' }}"
+            onclick="abrirEdicaoForma(this)"
+          >Editar</button>
+          <form action="{{ url_for('excluir_forma_pagamento', id=forma[0]) }}" method="post" class="inline-action" onsubmit="return confirm('Excluir esta forma de pagamento?');">
+            <button type="submit" class="link-action danger-link">Excluir</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<div id="modalForma" class="modal hidden">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div>
+        <h2 id="tituloModalForma">Adicionar forma</h2>
+        <p class="modal-subtitle">Exemplos: Dinheiro, Cartão de crédito, PIX, Débito.</p>
+      </div>
+      <button type="button" class="icon-button" id="fecharModalForma" aria-label="Fechar">&times;</button>
+    </div>
+
+    <form id="formForma" action="{{ url_for('adicionar_forma_pagamento') }}" method="post">
+      <div class="form-group">
+        <label for="nomeForma">Nome da forma de pagamento</label>
+        <input type="text" name="nome" id="nomeForma" placeholder="Ex.: Cartão de crédito" required>
+      </div>
+
+      <div class="form-group">
+        <label for="tipoForma">Tipo</label>
+        <select name="tipo" id="tipoForma" required>
+          <option value="outros">Outros</option>
+          <option value="cartao_credito">Cartão de crédito</option>
+        </select>
+      </div>
+
+      <div class="form-group hidden" id="campoFechamentoCartao">
+        <label for="diaFechamento">Dia de fechamento do cartão</label>
+        <input type="number" name="dia_fechamento" id="diaFechamento" min="1" max="31" placeholder="Ex.: 10">
+        <small class="field-help">Obrigatório para cartão de crédito. Usado para montar a fatura.</small>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Salvar forma</button>
+        <button type="button" class="btn btn-secondary" id="cancelarModalForma">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const modalForma = document.getElementById('modalForma');
+  const formForma = document.getElementById('formForma');
+  const nomeForma = document.getElementById('nomeForma');
+  const tipoForma = document.getElementById('tipoForma');
+  const campoFechamentoCartao = document.getElementById('campoFechamentoCartao');
+  const diaFechamento = document.getElementById('diaFechamento');
+  const tituloModalForma = document.getElementById('tituloModalForma');
+
+  function atualizarFechamentoCartao() {
+    const cartao = tipoForma.value === 'cartao_credito';
+    campoFechamentoCartao.classList.toggle('hidden', !cartao);
+    diaFechamento.required = cartao;
+    if (!cartao) diaFechamento.value = '';
+  }
+
+  function fecharModalForma() {
+    modalForma.classList.add('hidden');
+  }
+
+  document.getElementById('abrirModalForma').addEventListener('click', () => {
+    formForma.action = "{{ url_for('adicionar_forma_pagamento') }}";
+    formForma.reset();
+    tituloModalForma.textContent = 'Adicionar forma';
+    atualizarFechamentoCartao();
+    modalForma.classList.remove('hidden');
+    nomeForma.focus();
+  });
+
+  function abrirEdicaoForma(botao) {
+    formForma.action = `/editar_forma_pagamento/${botao.dataset.id}`;
+    tituloModalForma.textContent = 'Editar forma';
+    nomeForma.value = botao.dataset.nome;
+    tipoForma.value = botao.dataset.tipo || 'outros';
+    diaFechamento.value = botao.dataset.diaFechamento || '';
+    atualizarFechamentoCartao();
+    modalForma.classList.remove('hidden');
+    nomeForma.focus();
+  }
+
+  tipoForma.addEventListener('change', atualizarFechamentoCartao);
+  document.getElementById('fecharModalForma').addEventListener('click', fecharModalForma);
+  document.getElementById('cancelarModalForma').addEventListener('click', fecharModalForma);
+  window.addEventListener('click', (event) => {
+    if (event.target === modalForma) fecharModalForma();
+  });
+</script>
+{% endblock %}
