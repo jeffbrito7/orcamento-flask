@@ -1,0 +1,6 @@
+Flask
+psycopg2-binary
+gunicorn
+waitress
+openpyxl
+xlrd
