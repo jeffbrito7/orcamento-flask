@@ -1,0 +1,198 @@
+{% extends 'base.html' %}
+
+{% block title %}Orcamento do fechamento | Orcamento Pessoal{% endblock %}
+
+{% block pdf_subtitle %}
+<p>Planejado x realizado considerando toda a despesa consolidada do fechamento mensal em {{ competencia[5:7] }}/{{ competencia[0:4] }}.</p>
+{% endblock %}
+
+{% block content %}
+{% if pdf_mode %}
+<section class="pdf-meta-grid">
+  <article class="pdf-meta-card">
+    <span class="metric-label">Competencia</span>
+    <strong>{{ competencia[5:7] }}/{{ competencia[0:4] }}</strong>
+    <small>Base do fechamento mensal</small>
+  </article>
+  <article class="pdf-meta-card">
+    <span class="metric-label">Categorias analisadas</span>
+    <strong>{{ orcamento_categorias|length }}</strong>
+    <small>Categorias com percentual cadastrado</small>
+  </article>
+  <article class="pdf-meta-card">
+    <span class="metric-label">Base usada</span>
+    <strong>Fechamento mensal</strong>
+    <small>Faturas apuradas + despesas fora do cartao</small>
+  </article>
+</section>
+
+<section class="pdf-summary-grid">
+  <article class="pdf-summary-card">
+    <span class="metric-label">Receitas do periodo</span>
+    <strong>R$ {{ '%.2f'|format(total_receita or 0) }}</strong>
+    <small>Base dos percentuais planejados</small>
+  </article>
+  <article class="pdf-summary-card">
+    <span class="metric-label">Valor planejado</span>
+    <strong>R$ {{ '%.2f'|format(total_planejado or 0) }}</strong>
+    <small>Soma dos limites das categorias</small>
+  </article>
+  <article class="pdf-summary-card">
+    <span class="metric-label">Valor realizado</span>
+    <strong>R$ {{ '%.2f'|format(total_realizado or 0) }}</strong>
+    <small>Total gasto do fechamento</small>
+  </article>
+  <article class="pdf-summary-card">
+    <span class="metric-label">{{ 'Estouro' if total_restante < 0 else 'Saldo disponivel' }}</span>
+    <strong>R$ {{ '%.2f'|format((total_restante|abs) or 0) }}</strong>
+    <small>{{ 'Acima do valor planejado' if total_restante < 0 else 'Valor ainda nao consumido' }}</small>
+  </article>
+</section>
+
+<section class="pdf-report-section">
+  <div class="pdf-section-header">
+    <div>
+      <h2>Categorias do fechamento</h2>
+      <p>Leitura do limite planejado, realizado e diferenca por categoria.</p>
+    </div>
+    <span class="pdf-inline-note">{{ '%.1f'|format(percentual_consumido or 0) }}% do orcamento consumido</span>
+  </div>
+  <table class="pdf-report-table">
+    <thead>
+      <tr>
+        <th style="width: 24%;">Categoria</th>
+        <th style="width: 12%;">% receita</th>
+        <th style="width: 16%;">Planejado</th>
+        <th style="width: 16%;">Realizado</th>
+        <th style="width: 12%;">Consumo</th>
+        <th style="width: 20%;">Diferenca</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for cat in orcamento_categorias %}
+      <tr>
+        <td>{{ cat.categoria }}</td>
+        <td>{{ '%.2f'|format(cat.percentual or 0) }}%</td>
+        <td class="cell-amount">R$ {{ '%.2f'|format(cat.planejado or 0) }}</td>
+        <td class="cell-amount">R$ {{ '%.2f'|format(cat.realizado or 0) }}</td>
+        <td>{{ '%.1f'|format(cat.porcentagem or 0) }}%</td>
+        <td>
+          {% if cat.restante < 0 %}
+            Excedeu R$ {{ '%.2f'|format((cat.restante|abs) or 0) }}
+          {% else %}
+            Falta R$ {{ '%.2f'|format(cat.restante or 0) }}
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% else %}
+<section class="page-header">
+  <div>
+    <span class="eyebrow">Analise mensal</span>
+    <h1>Orcamento do fechamento</h1>
+    <p>Compare o planejamento por categoria com o gasto real do fechamento mensal.</p>
+  </div>
+</section>
+
+<section class="panel period-filter">
+  <form method="get" action="{{ url_for('relatorio_planejado') }}">
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="competencia">Competencia</label>
+        <input type="month" name="competencia" id="competencia" value="{{ competencia }}" required>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Atualizar orcamento</button>
+      <a href="{{ url_for('relatorio_planejado') }}" class="btn btn-secondary">Mes atual</a>
+    </div>
+  </form>
+</section>
+
+<section class="metric-grid budget-summary">
+  <article class="metric-card">
+    <span class="metric-label">Receitas do periodo</span>
+    <strong>R$ {{ '%.2f'|format(total_receita or 0) }}</strong>
+    <small>Base dos percentuais planejados</small>
+  </article>
+  <article class="metric-card">
+    <span class="metric-label">Valor planejado</span>
+    <strong>R$ {{ '%.2f'|format(total_planejado or 0) }}</strong>
+    <small>Soma dos limites das categorias</small>
+  </article>
+  <article class="metric-card">
+    <span class="metric-label">Valor realizado</span>
+    <strong>R$ {{ '%.2f'|format(total_realizado or 0) }}</strong>
+    <small>Total gasto do fechamento</small>
+  </article>
+  <article class="metric-card {{ 'negative' if total_restante < 0 else 'positive' }}">
+    <span class="metric-label">{{ 'Estouro' if total_restante < 0 else 'Falta realizar' }}</span>
+    <strong>R$ {{ '%.2f'|format((total_restante|abs) or 0) }}</strong>
+    <small>{{ 'Acima do valor planejado' if total_restante < 0 else 'Disponivel ate atingir o planejado' }}</small>
+  </article>
+</section>
+
+<section class="panel budget-overview">
+  <div class="panel-header">
+    <div>
+      <h2>Consumo geral do orcamento</h2>
+      <p>{{ '%.1f'|format(percentual_consumido or 0) }}% do valor planejado ja foi realizado.</p>
+    </div>
+    <span class="pill">Fechamento {{ competencia[5:7] }}/{{ competencia[0:4] }}</span>
+  </div>
+  <div class="progress large {{ 'over' if percentual_consumido > 100 else '' }}">
+    <span style="width: {{ percentual_consumido if percentual_consumido <= 100 else 100 }}%"></span>
+  </div>
+</section>
+
+<section class="table-container table-section">
+  <div class="table-toolbar">
+    <div>
+      <h2>Categorias no fechamento</h2>
+      <p>Acompanhe o limite planejado e o realizado usando a despesa consolidada do mes.</p>
+    </div>
+  </div>
+
+  <table class="budget-table">
+    <thead>
+      <tr>
+        <th>Categoria</th>
+        <th>% da receita</th>
+        <th>Planejado</th>
+        <th>Realizado</th>
+        <th>Progresso</th>
+        <th>Falta / excedeu</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for cat in orcamento_categorias %}
+      <tr>
+        <td><strong>{{ cat.categoria }}</strong></td>
+        <td>{{ '%.2f'|format(cat.percentual or 0) }}%</td>
+        <td>R$ {{ '%.2f'|format(cat.planejado or 0) }}</td>
+        <td>R$ {{ '%.2f'|format(cat.realizado or 0) }}</td>
+        <td>
+          <div class="budget-progress">
+            <div class="progress {{ 'over' if cat.porcentagem > 100 else '' }}">
+              <span style="width: {{ cat.barra }}%"></span>
+            </div>
+            <small>{{ '%.1f'|format(cat.porcentagem or 0) }}%</small>
+          </div>
+        </td>
+        <td>
+          {% if cat.restante < 0 %}
+            <span class="amount-negative">Excedeu R$ {{ '%.2f'|format((cat.restante|abs) or 0) }}</span>
+          {% else %}
+            <span class="amount-positive">Falta R$ {{ '%.2f'|format(cat.restante or 0) }}</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+{% endblock %}

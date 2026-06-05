@@ -1,0 +1,200 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Lançamentos</h1>
+
+<!-- Botão flutuante central -->
+<button id="abrirModal" class="botao-flutuante">➕ Incluir novo lançamento</button>
+
+<!-- Modal para novo lançamento -->
+<div id="modal" class="modal">
+  <div class="modal-conteudo">
+    <span class="fechar" id="fecharModal">&times;</span>
+    <h2>Novo Lançamento</h2>
+    <form action="/adicionar_lancamento" method="post">
+      <label>Data:</label>
+      <input type="date" name="data" required>
+
+      <label>Tipo:</label>
+      <select name="tipo" required>
+        <option value="receita">Receita</option>
+        <option value="despesa">Despesa</option>
+      </select>
+
+      <label>Valor Total:</label>
+      <input type="number" step="0.01" name="valor" required>
+
+      <label>Categoria:</label>
+      <select name="categoria_id" required>
+        {% for c in categorias %}
+          <option value="{{ c[0] }}">{{ c[1] }}</option>
+        {% endfor %}
+      </select>
+
+      <label>Pagador:</label>
+      <select name="pagador">
+        <option value="">Selecione um pagador</option>
+        {% for p in pagadores %}
+          <option value="{{ p[1] }}">{{ p[1] }}</option>
+        {% endfor %}
+      </select>
+
+      <label>Descrição:</label>
+      <textarea name="descricao"></textarea>
+
+      <label><input type="checkbox" name="parcelado" id="parcelado" onchange="toggleParcelas()"> Parcelado?</label>
+      <div id="campoParcelas" class="hidden">
+        <label>Quantidade de Parcelas:</label>
+        <input type="number" name="parcelas" min="1">
+      </div>
+
+      <button type="submit">Salvar Lançamento</button>
+    </form>
+  </div>
+</div>
+
+<!-- Tabela de lançamentos -->
+<div class="table-container">
+  <form method="post" action="/excluir_lancamentos" id="formExclusao">
+    <table class="planilha">
+      <thead>
+        <tr>
+          <th></th>
+          <th>Data</th>
+          <th>Tipo</th>
+          <th>Valor</th>
+          <th>Categoria</th>
+          <th>Pagador</th>
+          <th>Descrição</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for lanc in lancamentos %}
+        <tr>
+          <td><input type="checkbox" name="excluir_ids" value="{{ lanc[0] }}" onchange="verificarSelecao()"></td>
+          <td>{{ lanc[1] }}</td>
+          <td>{{ lanc[2] }}</td>
+          <td>R$ {{ '%.2f'|format(lanc[3]) }}</td>
+          <td>{{ lanc[6] }}</td>
+          <td>{{ lanc[7] or '' }}</td>
+          <td>{{ lanc[5] }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <!-- Botão de excluir que aparece dinamicamente -->
+    <div id="botaoExcluir" style="display:none; margin-top:1rem;">
+      <button type="submit" class="btn-lixeira">
+        🗑️ <span style="font-size: 0.9rem;">Excluir lançamento</span>
+      </button>
+    </div>
+  </form>
+</div>
+
+<style>
+  .botao-flutuante {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #1976d2;
+    color: white;
+    font-size: 1rem;
+    padding: 1rem 2rem;
+    border: none;
+    border-radius: 30px;
+    cursor: pointer;
+  }
+
+  .modal {
+    display: none;
+    position: fixed;
+    z-index: 999;
+    left: 0; top: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5);
+  }
+
+  .modal-conteudo {
+    background: white;
+    margin: 5% auto;
+    padding: 2rem;
+    width: 500px;
+    border-radius: 8px;
+    position: relative;
+  }
+
+  .fechar {
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    cursor: pointer;
+    font-size: 1.5rem;
+  }
+
+  .hidden { display: none; }
+
+  .btn-lixeira {
+    background: none;
+    border: none;
+    font-size: 1rem;
+    color: #d32f2f;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .table-container {
+    margin-top: 2rem;
+    overflow-x: auto;
+  }
+
+  .planilha {
+    width: 100%;
+    border-collapse: collapse;
+    background: #f9f9f9;
+    font-family: 'Courier New', Courier, monospace;
+  }
+
+  .planilha th, .planilha td {
+    border: 1px solid #ccc;
+    padding: 0.6rem;
+    text-align: left;
+  }
+
+  .planilha th {
+    background-color: #e3f2fd;
+    font-weight: bold;
+  }
+
+  .planilha tr:nth-child(even) {
+    background-color: #f1f8ff;
+  }
+</style>
+
+<script>
+  document.getElementById("abrirModal").onclick = () => {
+    document.getElementById("modal").style.display = "block";
+  };
+  document.getElementById("fecharModal").onclick = () => {
+    document.getElementById("modal").style.display = "none";
+  };
+  window.onclick = (e) => {
+    if (e.target == document.getElementById("modal")) {
+      document.getElementById("modal").style.display = "none";
+    }
+  };
+
+  function toggleParcelas() {
+    const campo = document.getElementById("campoParcelas");
+    campo.classList.toggle("hidden", !document.getElementById("parcelado").checked);
+  }
+
+  function verificarSelecao() {
+    const checkboxes = document.querySelectorAll('input[name="excluir_ids"]:checked');
+    document.getElementById("botaoExcluir").style.display = checkboxes.length > 0 ? "block" : "none";
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cadastro | Orcamento Pessoal</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body class="auth-body">
+  <main class="auth-page">
+    <section class="auth-card">
+      <a class="brand auth-brand" href="{{ url_for('login') }}">
+        <span class="brand-mark">OP</span>
+        <span>
+          <strong>Orcamento Pessoal</strong>
+          <small>{{ app_version }}</small>
+        </span>
+      </a>
+
+      <div class="auth-copy">
+        <span class="eyebrow">Nova conta</span>
+        <h1>Crie seu acesso</h1>
+        <p>Sua conta comeca com cadastros em branco para voce personalizar o sistema.</p>
+      </div>
+
+      {% if erro %}
+        <div class="alert alert-danger">{{ erro }}</div>
+      {% endif %}
+
+      <form method="post" class="auth-form">
+        <div class="form-group">
+          <label for="usuario">Usuario</label>
+          <input type="text" id="usuario" name="usuario" autocomplete="username" minlength="3" required autofocus>
+        </div>
+
+        <div class="form-group">
+          <label for="senha">Senha</label>
+          <input type="password" id="senha" name="senha" autocomplete="new-password" minlength="8" required>
+        </div>
+
+        <div class="form-group">
+          <label for="senha_confirmacao">Confirmar senha</label>
+          <input type="password" id="senha_confirmacao" name="senha_confirmacao" autocomplete="new-password" minlength="8" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Criar conta</button>
+      </form>
+
+      <p class="field-help auth-help">Ja tem acesso? <a href="{{ url_for('login') }}">Entrar</a>.</p>
+    </section>
+  </main>
+</body>
+</html>

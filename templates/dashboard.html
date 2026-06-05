@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Orçamento Financeiro Pessoal</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      display: flex;
+      height: 100vh;
+      background-color: #f5f5f5;
+    }
+    .sidebar {
+      width: 250px;
+      background-color: #1976d2;
+      color: white;
+      padding: 2rem 1rem;
+    }
+    .sidebar h2 {
+      font-size: 1.4rem;
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+    .menu-section {
+      margin-bottom: 2rem;
+    }
+    .menu-section h3 {
+      font-size: 1rem;
+      margin-bottom: 0.5rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+      padding-bottom: 0.3rem;
+      text-transform: uppercase;
+      color: #e3f2fd;
+    }
+    .menu-section a {
+      display: block;
+      color: white;
+      text-decoration: none;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      margin-bottom: 0.3rem;
+    }
+    .menu-section a:hover {
+      background-color: #1565c0;
+    }
+    .main {
+      flex-grow: 1;
+      padding: 2rem;
+      overflow-y: auto;
+    }
+    .main h1 {
+      margin-top: 0;
+    }
+    .dashboard {
+      display: flex;
+      gap: 2rem;
+      flex-wrap: wrap;
+      margin-top: 1.5rem;
+    }
+    .card {
+      background: white;
+      border-radius: 8px;
+      padding: 1.5rem;
+      flex: 1 1 400px;
+      box-shadow: 0 0 10px #ccc;
+    }
+    .info {
+      margin-top: 2rem;
+      background: white;
+      padding: 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 0 10px #ccc;
+    }
+    canvas {
+      width: 100%;
+      max-height: 300px;
+    }
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <h2>Orçamento Pessoal</h2>
+    <div class="menu-section">
+      <a href="/">Início</a>
+    </div>
+      <div class="menu-section">
+      <h3>Lançamentos</h3>
+      <a href="/lancamentos">Registrar Lançamentos</a>
+    </div>
+    <div class="menu-section">
+      <h3>Relatórios</h3>
+      <a href="/relatorio">Simples conferencia</a>
+      <a href="/relatorio_consolidado">Consolidado por categoria</a>
+      <a href="/relatorio_planejado">Planejado x Realizado por categoria</a>
+    </div>
+    <div class="menu-section">
+      <h3>Importação</h3>
+      <a href="/importar">Importar Planilha</a>
+    </div>
+    <div class="menu-section">
+      <h3>Parametrização</h3>
+      <a href="/categorias">Categorias</a>
+      <a href="/pagadores">Pagadores</a>
+    </div>
+  </div>
+
+  <div class="main">
+    <h1>Bem-vindo ao Orçamento Financeiro Pessoal</h1>
+
+<!-- ...MANTÉM SEU HTML ACIMA... -->
+<div class="dashboard">
+  <div class="card">
+    <h3>Gastos por Categoria (Despesas)</h3>
+    <canvas id="graficoColunas"></canvas>
+  </div>
+  <div class="card">
+    <h3>Planejado x Realizado por Categoria</h3>
+    <canvas id="graficoPlanejado"></canvas>
+  </div>
+</div>
+<!-- ...MANTÉM SEU HTML ABAIXO... -->
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  // Dados vindos do backend!
+  const categorias = {{categorias|tojson }};
+  const gastos = {{gastos|tojson }};
+  const planejado = {{ planejado|tojson }};
+
+  // Gráfico de Colunas: Gasto por Categoria
+  new Chart(document.getElementById("graficoColunas"), {
+    type: "bar",
+    data: {
+      labels: categorias,
+      datasets: [{
+        label: "Valor Gasto",
+        data: gastos
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+
+  // Gráfico Planejado x Realizado por Categoria (Barras horizontais)
+  new Chart(document.getElementById("graficoPlanejado"), {
+    type: "bar",
+    data: {
+      labels: categorias,
+      datasets: [
+        {
+          label: "Gasto Realizado",
+          data: gastos
+        },
+        {
+          label: "Gasto Planejado",
+          data: planejado
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      indexAxis: 'y', // barras horizontais
+      scales: { x: { beginAtZero: true } }
+    }
+  });
+</script>
+
+    <div class="info">
+      <h3>Sobre o sistema</h3>
+      <p>Utilize o menu ao lado para navegar entre as funcionalidades do sistema:</p>
+      <ul>
+        <li><strong>Lançamentos:</strong> registre manualmente suas receitas e despesas.</li>
+        <li><strong>Relatórios:</strong> acompanhe saldos, limites e categorias.</li>
+        <li><strong>Importação:</strong> envie planilhas com dados financeiros.</li>
+        <li><strong>Parametrização:</strong> cadastre categorias e pagadores.</li>
+      </ul>
+    </div>
+  </div>
+</body>
+</html>
+
+

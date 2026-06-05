@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Tipos de Operacao Contabil</h1>
+
+<form action="{{ url_for('adicionar_tipo_operacao_contabil') }}" method="post" style="max-width: 700px; margin-bottom: 2rem;">
+  <label for="nome">Nome:</label>
+  <input type="text" name="nome" id="nome" required>
+
+  <label for="descricao">Descricao:</label>
+  <input type="text" name="descricao" id="descricao">
+
+  <button type="submit">Adicionar tipo</button>
+</form>
+
+<table>
+  <thead>
+    <tr>
+      <th>Nome</th>
+      <th>Descricao</th>
+      <th>Acoes</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for tipo in tipos %}
+    <tr>
+      <td>{{ tipo[1] }}</td>
+      <td>{{ tipo[2] or '-' }}</td>
+      <td>
+        <a href="{{ url_for('editar_tipo_operacao_contabil', id=tipo[0]) }}">Editar</a>
+        <form action="{{ url_for('excluir_tipo_operacao_contabil', id=tipo[0]) }}" method="post" style="display:inline;" onsubmit="return confirm('Excluir este tipo?');">
+          <button type="submit">Excluir</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

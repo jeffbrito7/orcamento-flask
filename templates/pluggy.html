@@ -1,0 +1,253 @@
+{% extends 'base.html' %}
+
+{% block title %}Integracoes Bancarias | Orcamento Pessoal{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <span class="eyebrow">Automacao financeira</span>
+    <h1>Integracoes Bancarias</h1>
+    <p>Sincronize despesas de contas conectadas, resolva pendencias de categoria e importe apenas o que ja foi conferido.</p>
+  </div>
+  <a href="{{ url_for('pluggy_relacionamentos') }}" class="btn btn-secondary">Ver relacionamentos</a>
+</section>
+
+{% if erro %}
+<div class="alert alert-danger">{{ erro }}</div>
+{% endif %}
+{% if sucesso %}
+<div class="alert alert-success">{{ sucesso }}</div>
+{% endif %}
+{% if not configurado %}
+<div class="alert alert-danger">Configure a Pluggy em Configuracoes antes de sincronizar.</div>
+{% endif %}
+
+<section class="metric-grid category-summary">
+  <article class="metric-card">
+    <span class="metric-label">Pendentes</span>
+    <strong>{{ pendentes_count }}</strong>
+    <small>R$ {{ '%.2f'|format(pendentes_valor) }} para importar</small>
+  </article>
+  <article class="metric-card">
+    <span class="metric-label">Importadas</span>
+    <strong>{{ importadas_count }}</strong>
+    <small>R$ {{ '%.2f'|format(importadas_valor) }} ja virou lancamento</small>
+  </article>
+  <article class="metric-card">
+    <span class="metric-label">Mapeamentos pendentes</span>
+    <strong>{{ mapeamentos_pendentes }}</strong>
+    <small>Categorias aguardando relacionamento</small>
+  </article>
+  <article class="metric-card">
+    <span class="metric-label">Cartao</span>
+    <strong>{{ card_last4 }}</strong>
+    <small>Final filtrado na sincronizacao</small>
+  </article>
+</section>
+
+<section class="panel period-filter">
+  <form action="{{ url_for('pluggy_sincronizar') }}" method="post" class="filters-form compact-filter">
+    <div>
+      <label for="card_last4">Final do cartao</label>
+      <input type="text" id="card_last4" name="card_last4" value="{{ card_last4 }}" maxlength="4">
+    </div>
+    <div class="filter-actions">
+      <button type="submit" class="btn btn-primary">Sincronizar Pluggy</button>
+      <a href="{{ url_for('configuracoes') }}" class="btn btn-secondary">Configurar</a>
+    </div>
+  </form>
+</section>
+
+<section class="panel period-filter">
+  <form method="get" action="{{ url_for('pluggy') }}" class="filters-form integration-filters">
+    <div>
+      <label for="busca">Buscar</label>
+      <input type="text" id="busca" name="busca" value="{{ filtros.busca }}" placeholder="Descricao, categoria ou estabelecimento">
+    </div>
+    <div>
+      <label for="status">Situacao</label>
+      <select id="status" name="status">
+        <option value="todas" {{ 'selected' if filtros.status == 'todas' else '' }}>Todas</option>
+        <option value="pendentes" {{ 'selected' if filtros.status == 'pendentes' else '' }}>Pendentes</option>
+        <option value="importadas" {{ 'selected' if filtros.status == 'importadas' else '' }}>Importadas</option>
+      </select>
+    </div>
+    <div>
+      <label for="mapeamento">Relacionamento</label>
+      <select id="mapeamento" name="mapeamento">
+        <option value="todos" {{ 'selected' if filtros.mapeamento == 'todos' else '' }}>Todos</option>
+        <option value="sem" {{ 'selected' if filtros.mapeamento == 'sem' else '' }}>Sem categoria relacionada</option>
+        <option value="com" {{ 'selected' if filtros.mapeamento == 'com' else '' }}>Com categoria relacionada</option>
+      </select>
+    </div>
+    <div>
+      <label for="data_inicio">Data inicial</label>
+      <input type="date" id="data_inicio" name="data_inicio" value="{{ filtros.data_inicio }}">
+    </div>
+    <div>
+      <label for="data_fim">Data final</label>
+      <input type="date" id="data_fim" name="data_fim" value="{{ filtros.data_fim }}">
+    </div>
+    <div>
+      <label for="categoria_id">Categoria</label>
+      <select id="categoria_id" name="categoria_id">
+        <option value="">Todas</option>
+        {% for categoria in categorias %}
+        <option value="{{ categoria[0] }}" {{ 'selected' if filtros.categoria_id|string == categoria[0]|string else '' }}>{{ categoria[1] }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-actions">
+      <button type="submit" class="btn btn-primary">Filtrar</button>
+      <a href="{{ url_for('pluggy') }}" class="btn btn-secondary">Limpar</a>
+    </div>
+  </form>
+</section>
+
+<section class="table-container table-section">
+  <div class="table-toolbar">
+    <div>
+      <h2>Categorias pendentes</h2>
+      <p>Resolva apenas o que ainda nao tem categoria relacionada. Os relacionamentos concluidos ficam na tela Categorias Integradas.</p>
+    </div>
+    <a href="{{ url_for('pluggy_relacionamentos') }}" class="link-action">Ver todos</a>
+  </div>
+
+  <form action="{{ url_for('pluggy_mapeamentos_salvar') }}" method="post">
+    <input type="hidden" name="proximo" value="{{ url_for('pluggy') }}">
+    <table>
+      <thead>
+        <tr>
+          <th>Categoria recebida</th>
+          <th>Nome em portugues</th>
+          <th>Categoria do sistema</th>
+          <th>Pagador / divisao</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for map in mapeamentos %}
+        <tr class="{{ 'pending-row' if not map[3] else '' }}">
+          <td>
+            <input type="hidden" name="mapeamento_id" value="{{ map[0] }}">
+            {{ map[1] or '-' }}
+          </td>
+          <td>
+            <strong>{{ map[2] or '-' }}</strong>
+            {% if not map[3] %}
+            <small class="field-help">Aguardando relacionamento</small>
+            {% endif %}
+          </td>
+          <td>
+            <select name="categoria_id_{{ map[0] }}">
+              <option value="">Selecione uma categoria</option>
+              {% for categoria in categorias %}
+              <option value="{{ categoria[0] }}" {{ 'selected' if categoria[0] == map[3] else '' }}>{{ categoria[1] }}</option>
+              {% endfor %}
+            </select>
+          </td>
+          <td>
+            <div class="mapping-controls">
+              <select name="pagador_padrao_{{ map[0] }}">
+                <option value="">Sem pagador padrao</option>
+                {% for pagador in pagadores %}
+                <option value="{{ pagador }}" {{ 'selected' if pagador == map[5] else '' }}>{{ pagador }}</option>
+                {% endfor %}
+              </select>
+              <label class="inline-check mapping-check">
+                <input type="checkbox" name="dividir_auto_{{ map[0] }}" {{ 'checked' if map[4] else '' }}>
+                <span>Dividir automaticamente</span>
+              </label>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+        {% if not mapeamentos %}
+        <tr>
+          <td colspan="4" class="muted">Nenhuma categoria pendente de relacionamento.</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+    {% if mapeamentos %}
+    <div class="table-footer-actions">
+      <button type="submit" class="btn btn-primary">Salvar relacionamentos</button>
+    </div>
+    {% endif %}
+  </form>
+</section>
+
+<section class="table-container table-section">
+  <div class="table-toolbar">
+    <div>
+      <h2>Transacoes sincronizadas</h2>
+      <p>Selecione apenas despesas com categoria relacionada. O sistema ignora as pendentes para evitar lancamentos incompletos.</p>
+    </div>
+  </div>
+
+  <form action="{{ url_for('pluggy_importar') }}" method="post">
+    <table>
+      <thead>
+        <tr>
+          <th><input type="checkbox" id="selecionarPluggy"></th>
+          <th>Data</th>
+          <th>Descricao</th>
+          <th>Valor</th>
+          <th>Categoria</th>
+          <th>Cartao</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for transacao in transacoes %}
+        <tr class="{{ 'pending-row' if not transacao[5] else '' }}">
+          <td>
+            {% if transacao[8] %}
+            <span class="status receita">importada</span>
+            {% elif not transacao[5] %}
+            <span class="status pendente">pendente</span>
+            {% else %}
+            <input type="checkbox" name="transacao_id" value="{{ transacao[0] }}">
+            {% endif %}
+          </td>
+          <td>{{ transacao[1] }}</td>
+          <td>
+            <strong>{{ transacao[2] }}</strong>
+            <small class="field-help">{{ transacao[9] or '-' }}</small>
+          </td>
+          <td>R$ {{ '%.2f'|format(transacao[3]) }}</td>
+          <td>
+            {{ transacao[5] or transacao[4] or '-' }}
+            {% if not transacao[5] %}
+            <small class="field-help">Relacione a categoria antes de importar</small>
+            {% endif %}
+          </td>
+          <td>{{ transacao[7] or '-' }}</td>
+          <td><span class="status despesa">{{ transacao[6] or '-' }}</span></td>
+        </tr>
+        {% endfor %}
+        {% if not transacoes %}
+        <tr>
+          <td colspan="7" class="muted">Nenhuma transacao encontrada para o filtro atual.</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+    <div class="floating-actions">
+      <button type="submit" class="btn btn-primary">Importar selecionadas</button>
+    </div>
+  </form>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const selecionarPluggy = document.getElementById('selecionarPluggy');
+  if (selecionarPluggy) {
+    selecionarPluggy.addEventListener('change', () => {
+      document.querySelectorAll('input[name="transacao_id"]').forEach((checkbox) => {
+        checkbox.checked = selecionarPluggy.checked;
+      });
+    });
+  }
+</script>
+{% endblock %}

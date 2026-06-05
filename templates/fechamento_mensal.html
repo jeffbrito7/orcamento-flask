@@ -1,0 +1,321 @@
+{% extends 'base.html' %}
+
+{% block title %}Fechamento mensal | Orcamento Pessoal{% endblock %}
+
+{% block pdf_subtitle %}
+<p>Consolidacao mensal com faturas apuradas do cartao e despesas de outras formas de pagamento em {{ competencia_label }}.</p>
+{% endblock %}
+
+{% block content %}
+{% if pdf_mode %}
+<section class="pdf-meta-grid">
+  <article class="pdf-meta-card">
+    <span class="metric-label">Competencia</span>
+    <strong>{{ competencia_label }}</strong>
+    <small>Mes base do fechamento</small>
+  </article>
+  <article class="pdf-meta-card">
+    <span class="metric-label">Base consolidada</span>
+    <strong>Fatura + outras formas</strong>
+    <small>Despesas de cartao apuradas e despesas fora do cartao no mesmo mes</small>
+  </article>
+  <article class="pdf-meta-card">
+    <span class="metric-label">Pendencias de cartao</span>
+    <strong>{{ fechamento.cartao_pendente_qtd }}</strong>
+    <small>R$ {{ '%.2f'|format(fechamento.cartao_pendente_total or 0) }} ainda sem fatura</small>
+  </article>
+</section>
+
+<section class="pdf-summary-grid">
+  <article class="pdf-summary-card">
+    <span class="metric-label">Receitas do mes</span>
+    <strong>R$ {{ '%.2f'|format(fechamento.total_receita or 0) }}</strong>
+    <small>Entradas da competencia</small>
+  </article>
+  <article class="pdf-summary-card">
+    <span class="metric-label">Faturas apuradas</span>
+    <strong>R$ {{ '%.2f'|format(fechamento.total_cartao or 0) }}</strong>
+    <small>Despesa consolidada de cartoes</small>
+  </article>
+  <article class="pdf-summary-card">
+    <span class="metric-label">Outras despesas</span>
+    <strong>R$ {{ '%.2f'|format(fechamento.total_outras_formas or 0) }}</strong>
+    <small>PIX, dinheiro, debito e outras saidas</small>
+  </article>
+  <article class="pdf-summary-card">
+    <span class="metric-label">Fechamento do mes</span>
+    <strong>R$ {{ '%.2f'|format(fechamento.total_fechamento or 0) }}</strong>
+    <small>Saldo final R$ {{ '%.2f'|format(fechamento.saldo or 0) }}</small>
+  </article>
+</section>
+
+<section class="pdf-two-column">
+  <section class="pdf-report-section">
+    <div class="pdf-section-header">
+      <div>
+        <h2>Faturas por cartao</h2>
+        <p>Quanto cada cartao levou para o fechamento do mes.</p>
+      </div>
+    </div>
+    <table class="pdf-report-table">
+      <thead>
+        <tr>
+          <th style="width: 68%;">Cartao</th>
+          <th style="width: 32%;">Valor</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in fechamento.faturas_cartoes %}
+        <tr>
+          <td>{{ item.cartao }}</td>
+          <td class="cell-amount">R$ {{ '%.2f'|format(item.valor or 0) }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="2">Nenhuma fatura apurada no mes.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="pdf-report-section">
+    <div class="pdf-section-header">
+      <div>
+        <h2>Despesas fora do cartao</h2>
+        <p>Saidas do mes por forma de pagamento.</p>
+      </div>
+    </div>
+    <table class="pdf-report-table">
+      <thead>
+        <tr>
+          <th style="width: 68%;">Forma</th>
+          <th style="width: 32%;">Valor</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in fechamento.despesas_outras_formas %}
+        <tr>
+          <td>{{ item.forma }}</td>
+          <td class="cell-amount">R$ {{ '%.2f'|format(item.valor or 0) }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="2">Nao houve despesas fora do cartao.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</section>
+
+<section class="pdf-report-section">
+  <div class="pdf-section-header">
+    <div>
+      <h2>Categorias do fechamento</h2>
+      <p>Leitura por categoria considerando toda a despesa consolidada do mes.</p>
+    </div>
+  </div>
+  <table class="pdf-report-table">
+    <thead>
+      <tr>
+        <th style="width: 70%;">Categoria</th>
+        <th style="width: 30%;">Valor</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in fechamento.categorias_fechamento %}
+      <tr>
+        <td>{{ item.categoria }}</td>
+        <td class="cell-amount">R$ {{ '%.2f'|format(item.valor or 0) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="pdf-report-section">
+  <div class="pdf-section-header">
+    <div>
+      <h2>Itens considerados no fechamento</h2>
+      <p>Composicao das despesas que entraram no fechamento mensal.</p>
+    </div>
+  </div>
+  <table class="pdf-report-table">
+    <thead>
+      <tr>
+        <th style="width: 12%;">Data</th>
+        <th style="width: 12%;">Base</th>
+        <th style="width: 16%;">Categoria</th>
+        <th style="width: 24%;">Descricao</th>
+        <th style="width: 12%;">Pagador</th>
+        <th style="width: 14%;">Forma</th>
+        <th style="width: 10%;">Valor</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in fechamento.itens %}
+      <tr>
+        <td>{{ item.data }}</td>
+        <td>{{ 'Fatura' if item.base_analise == 'cartao' else 'Outra forma' }}</td>
+        <td>{{ item.categoria }}</td>
+        <td>{{ item.descricao }}</td>
+        <td>{{ item.pagador }}</td>
+        <td>{{ item.forma_pagamento }}</td>
+        <td class="cell-amount">R$ {{ '%.2f'|format(item.valor or 0) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% else %}
+<section class="page-header">
+  <div>
+    <span class="eyebrow">Rotina mensal</span>
+    <h1>Fechamento mensal</h1>
+    <p>Consolide a despesa do mes somando a fatura apurada dos cartoes com as despesas de outras formas de pagamento.</p>
+  </div>
+</section>
+
+<section class="panel period-filter">
+  <form method="get" action="{{ url_for('fechamento_mensal') }}" class="filters-form">
+    <div>
+      <label for="competencia">Competencia</label>
+      <input type="month" id="competencia" name="competencia" value="{{ competencia }}" required>
+    </div>
+    <div class="filter-actions">
+      <button type="submit" class="btn btn-primary">Apurar fechamento</button>
+      <a href="{{ url_for('fechamento_mensal') }}" class="btn btn-secondary">Mes atual</a>
+    </div>
+  </form>
+</section>
+
+<section class="metric-grid category-summary">
+  <article class="metric-card">
+    <span class="metric-label">Receitas do mes</span>
+    <strong>R$ {{ '%.2f'|format(fechamento.total_receita or 0) }}</strong>
+    <small>Entradas da competencia</small>
+  </article>
+  <article class="metric-card">
+    <span class="metric-label">Faturas apuradas</span>
+    <strong>R$ {{ '%.2f'|format(fechamento.total_cartao or 0) }}</strong>
+    <small>Valor consolidado dos cartoes</small>
+  </article>
+  <article class="metric-card">
+    <span class="metric-label">Outras despesas</span>
+    <strong>R$ {{ '%.2f'|format(fechamento.total_outras_formas or 0) }}</strong>
+    <small>PIX, dinheiro, debito e outras formas</small>
+  </article>
+  <article class="metric-card {{ 'negative' if fechamento.saldo < 0 else 'positive' }}">
+    <span class="metric-label">Saldo do fechamento</span>
+    <strong>R$ {{ '%.2f'|format(fechamento.saldo or 0) }}</strong>
+    <small>Fechamento total R$ {{ '%.2f'|format(fechamento.total_fechamento or 0) }}</small>
+  </article>
+</section>
+
+<section class="content-grid">
+  <article class="panel">
+    <div class="panel-header">
+      <div>
+        <h2>Leitura do fechamento</h2>
+        <p>Use o fechamento como base consolidada do mes para rateio, categorias e orcamento.</p>
+      </div>
+    </div>
+    <div class="invoice-button-row">
+      <a href="{{ url_for('relatorio_divisao_pagadores', modo_analise='fechamento', fechamento_competencia=competencia) }}" class="btn btn-secondary">Rateio do fechamento</a>
+      <a href="{{ url_for('relatorio_consolidado', competencia=competencia) }}" class="btn btn-secondary">Categorias do fechamento</a>
+      <a href="{{ url_for('relatorio_planejado', competencia=competencia) }}" class="btn btn-secondary">Orcamento do fechamento</a>
+    </div>
+    <ul class="check-list">
+      <li>Entram as faturas apuradas dos cartoes da competencia.</li>
+      <li>Entram as despesas do mes em PIX, dinheiro, debito e outras formas fora do cartao.</li>
+      <li>Compras de cartao sem fatura continuam pendentes e aparecem separadas.</li>
+    </ul>
+  </article>
+
+  <article class="panel">
+    <div class="panel-header">
+      <div>
+        <h2>Pendencias de cartao</h2>
+        <p>O que ainda nao entrou em fatura e pode distorcer a leitura do mes.</p>
+      </div>
+    </div>
+    <div class="finance-list">
+      <div class="finance-list-row">
+        <span>Quantidade pendente</span>
+        <strong>{{ fechamento.cartao_pendente_qtd }}</strong>
+      </div>
+      <div class="finance-list-row">
+        <span>Total pendente</span>
+        <strong>R$ {{ '%.2f'|format(fechamento.cartao_pendente_total or 0) }}</strong>
+      </div>
+    </div>
+  </article>
+</section>
+
+<section class="content-grid">
+  <article class="panel">
+    <div class="panel-header">
+      <div>
+        <h2>Faturas por cartao</h2>
+        <p>Se voce tem mais de um cartao, veja o peso de cada um no fechamento.</p>
+      </div>
+    </div>
+    <div class="finance-list">
+      {% for item in fechamento.faturas_cartoes %}
+      <div class="finance-list-row">
+        <span>{{ item.cartao }}</span>
+        <strong>R$ {{ '%.2f'|format(item.valor or 0) }}</strong>
+      </div>
+      {% else %}
+      <p class="muted">Nenhuma fatura apurada no mes.</p>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="panel-header">
+      <div>
+        <h2>Despesas fora do cartao</h2>
+        <p>Veja quanto as outras formas de pagamento levaram no mesmo mes.</p>
+      </div>
+    </div>
+    <div class="finance-list">
+      {% for item in fechamento.despesas_outras_formas %}
+      <div class="finance-list-row">
+        <span>{{ item.forma }}</span>
+        <strong>R$ {{ '%.2f'|format(item.valor or 0) }}</strong>
+      </div>
+      {% else %}
+      <p class="muted">Nao houve despesas fora do cartao.</p>
+      {% endfor %}
+    </div>
+  </article>
+</section>
+
+<section class="table-container table-section">
+  <div class="table-toolbar">
+    <div>
+      <h2>Categorias do fechamento</h2>
+      <p>Resumo das categorias considerando cartao e outras formas.</p>
+    </div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Categoria</th>
+        <th>Valor</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in fechamento.categorias_fechamento %}
+      <tr>
+        <td>{{ item.categoria }}</td>
+        <td>R$ {{ '%.2f'|format(item.valor or 0) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+{% endblock %}

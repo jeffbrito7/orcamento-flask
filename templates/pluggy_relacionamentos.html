@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+
+{% block title %}Categorias Integradas | Orcamento Pessoal{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <span class="eyebrow">Integracoes bancarias</span>
+    <h1>Categorias Integradas</h1>
+    <p>Consulte e altere o relacionamento entre categorias recebidas pela integracao e categorias existentes no sistema.</p>
+  </div>
+  <a href="{{ url_for('pluggy') }}" class="btn btn-secondary">Voltar para integracoes</a>
+</section>
+
+{% if erro %}
+<div class="alert alert-danger">{{ erro }}</div>
+{% endif %}
+{% if sucesso %}
+<div class="alert alert-success">{{ sucesso }}</div>
+{% endif %}
+
+<section class="metric-grid category-summary">
+  <article class="metric-card">
+    <span class="metric-label">Pendentes</span>
+    <strong>{{ pendentes }}</strong>
+    <small>Aguardando relacionamento</small>
+  </article>
+  <article class="metric-card">
+    <span class="metric-label">Relacionados</span>
+    <strong>{{ relacionados }}</strong>
+    <small>Prontos para importacao automatizada</small>
+  </article>
+</section>
+
+<section class="panel period-filter">
+  <form method="get" action="{{ url_for('pluggy_relacionamentos') }}" class="filters-form relationship-filters">
+    <div>
+      <label for="busca">Buscar</label>
+      <input type="text" id="busca" name="busca" value="{{ filtros.busca }}" placeholder="Categoria, pagador ou nome relacionado">
+    </div>
+    <div>
+      <label for="estado">Situacao</label>
+      <select id="estado" name="estado">
+        <option value="todos" {{ 'selected' if filtros.estado == 'todos' else '' }}>Todos</option>
+        <option value="pendentes" {{ 'selected' if filtros.estado == 'pendentes' else '' }}>Pendentes</option>
+        <option value="relacionados" {{ 'selected' if filtros.estado == 'relacionados' else '' }}>Relacionados</option>
+      </select>
+    </div>
+    <div class="filter-actions">
+      <button type="submit" class="btn btn-primary">Filtrar</button>
+      <a href="{{ url_for('pluggy_relacionamentos') }}" class="btn btn-secondary">Limpar</a>
+    </div>
+  </form>
+</section>
+
+<section class="table-container table-section">
+  <div class="table-toolbar">
+    <div>
+      <h2>Relacionamentos cadastrados</h2>
+      <p>Altere a categoria do sistema ou a regra de divisao sempre que precisar.</p>
+    </div>
+  </div>
+
+  <form action="{{ url_for('pluggy_mapeamentos_salvar') }}" method="post">
+    <input type="hidden" name="proximo" value="{{ request.full_path }}">
+    <table>
+      <thead>
+        <tr>
+          <th>Categoria recebida</th>
+          <th>Nome em portugues</th>
+          <th>Categoria do sistema</th>
+          <th>Pagador / divisao</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for map in mapeamentos %}
+        <tr class="{{ 'pending-row' if not map[3] else '' }}">
+          <td>
+            <input type="hidden" name="mapeamento_id" value="{{ map[0] }}">
+            {{ map[1] or '-' }}
+          </td>
+          <td>
+            <strong>{{ map[2] or '-' }}</strong>
+            {% if not map[3] %}
+            <small class="field-help">Aguardando relacionamento</small>
+            {% endif %}
+          </td>
+          <td>
+            <select name="categoria_id_{{ map[0] }}">
+              <option value="">Selecione uma categoria</option>
+              {% for categoria in categorias %}
+              <option value="{{ categoria[0] }}" {{ 'selected' if categoria[0] == map[3] else '' }}>{{ categoria[1] }}</option>
+              {% endfor %}
+            </select>
+            {% if map[6] %}
+            <small class="field-help">Atual: {{ map[6] }}</small>
+            {% endif %}
+          </td>
+          <td>
+            <div class="mapping-controls">
+              <select name="pagador_padrao_{{ map[0] }}">
+                <option value="">Sem pagador padrao</option>
+                {% for pagador in pagadores %}
+                <option value="{{ pagador }}" {{ 'selected' if pagador == map[5] else '' }}>{{ pagador }}</option>
+                {% endfor %}
+              </select>
+              <label class="inline-check mapping-check">
+                <input type="checkbox" name="dividir_auto_{{ map[0] }}" {{ 'checked' if map[4] else '' }}>
+                <span>Dividir automaticamente</span>
+              </label>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+        {% if not mapeamentos %}
+        <tr>
+          <td colspan="4" class="muted">Nenhum relacionamento encontrado para o filtro atual.</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+    {% if mapeamentos %}
+    <div class="table-footer-actions">
+      <button type="submit" class="btn btn-primary">Salvar relacionamentos</button>
+    </div>
+    {% endif %}
+  </form>
+</section>
+{% endblock %}

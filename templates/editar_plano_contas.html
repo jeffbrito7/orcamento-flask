@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Editar Conta</h1>
+
+<form method="post" style="max-width: 700px;">
+  <label for="codigo">Codigo:</label>
+  <input type="text" name="codigo" id="codigo" value="{{ conta[1] }}" required>
+
+  <label for="nome">Nome:</label>
+  <input type="text" name="nome" id="nome" value="{{ conta[2] }}" required>
+
+  <label for="tipo">Tipo:</label>
+  <select name="tipo" id="tipo" required>
+    <option value="analitica" {% if conta[3] == 'analitica' %}selected{% endif %}>Analitica</option>
+    <option value="sintetica" {% if conta[3] == 'sintetica' %}selected{% endif %}>Sintetica</option>
+  </select>
+
+  <label for="conta_pai">Conta pai:</label>
+  <select name="conta_pai" id="conta_pai">
+    <option value="">Sem conta pai</option>
+    {% for pai in contas_pai %}
+    <option value="{{ pai[0] }}" {% if conta[4] == pai[0] %}selected{% endif %}>{{ pai[1] }}</option>
+    {% endfor %}
+  </select>
+
+  <button type="submit">Salvar</button>
+  <a href="{{ url_for('plano_contas') }}">Cancelar</a>
+</form>
+{% endblock %}

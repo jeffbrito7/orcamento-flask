@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-4">
+  <h2 class="mb-3">Lançamentos Contábeis</h2>
+  <a href="{{ url_for('adicionar_lancamento_contabil') }}" class="btn btn-primary mb-3">Novo Lançamento</a>
+  <table class="table table-bordered table-striped">
+    <thead class="table-dark">
+      <tr>
+        <th>Data</th>
+        <th>Histórico</th>
+        <th>Conta Débito</th>
+        <th>Conta Crédito</th>
+        <th>Valor</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for lanc in lancamentos %}
+      <tr>
+        <td>{{ lanc.data }}</td>
+        <td>{{ lanc.historico }}</td>
+        <td>{{ lanc.conta_debito }}</td>
+        <td>{{ lanc.conta_credito }}</td>
+        <td>R$ {{ lanc.valor }}</td>
+        <td>
+          <a href="{{ url_for('editar_lancamento_contabil', id=lanc.id) }}" class="btn btn-sm btn-warning">Editar</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

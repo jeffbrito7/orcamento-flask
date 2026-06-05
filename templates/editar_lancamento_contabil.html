@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-4">
+  <h2>Editar Lançamento Contábil</h2>
+  <form method="post">
+    <div class="mb-3">
+      <label for="data" class="form-label">Data</label>
+      <input type="date" name="data" class="form-control" value="{{ lancamento.data }}" required>
+    </div>
+    <div class="mb-3">
+      <label for="historico" class="form-label">Histórico</label>
+      <input type="text" name="historico" class="form-control" value="{{ lancamento.historico }}" required>
+    </div>
+    <div class="mb-3">
+      <label for="conta_debito" class="form-label">Conta Débito</label>
+      <input type="text" name="conta_debito" class="form-control" value="{{ lancamento.conta_debito }}" required>
+    </div>
+    <div class="mb-3">
+      <label for="conta_credito" class="form-label">Conta Crédito</label>
+      <input type="text" name="conta_credito" class="form-control" value="{{ lancamento.conta_credito }}" required>
+    </div>
+    <div class="mb-3">
+      <label for="valor" class="form-label">Valor</label>
+      <input type="number" name="valor" class="form-control" step="0.01" value="{{ lancamento.valor }}" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Atualizar</button>
+    <a href="{{ url_for('index_contabil') }}" class="btn btn-secondary">Cancelar</a>
+  </form>
+</div>
+{% endblock %}

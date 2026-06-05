@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Editar Tipo de Operacao Contabil</h1>
+
+<form method="post" style="max-width: 700px;">
+  <label for="nome">Nome:</label>
+  <input type="text" name="nome" id="nome" value="{{ tipo[1] }}" required>
+
+  <label for="descricao">Descricao:</label>
+  <input type="text" name="descricao" id="descricao" value="{{ tipo[2] or '' }}">
+
+  <button type="submit">Salvar</button>
+  <a href="{{ url_for('tipos_operacao_contabil') }}">Cancelar</a>
+</form>
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Editar Lançamento</h1>
+<form action="" method="post" class="modal-form" style="max-width:500px;margin:auto;">
+  <div class="form-group">
+    <label>Data:</label>
+    <input type="date" name="data" value="{{ lancamento[1].strftime('%d/%m/%y') }}" required>
+  </div>
+  <div class="form-group">
+    <label>Tipo:</label>
+    <select name="tipo" required>
+      <option value="receita" {% if lancamento[2]=='receita' %}selected{% endif %}>Receita</option>
+      <option value="despesa" {% if lancamento[2]=='despesa' %}selected{% endif %}>Despesa</option>
+    </select>
+  </div>
+  <div class="form-group">
+    <label>Valor:</label>
+    <input type="number" step="0.01" name="valor" value="{{ lancamento[3] }}" required>
+  </div>
+  <div class="form-group">
+    <label>Categoria:</label>
+    <select name="categoria_id" required>
+      {% for c in categorias %}
+      <option value="{{ c[0] }}" {% if c[0] == lancamento[4] %}selected{% endif %}>{{ c[1] }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="form-group">
+    <label>Pagador:</label>
+    <select name="pagador">
+      <option value="">Selecione um pagador</option>
+      {% for p in pagadores %}
+      <option value="{{ p[1] }}" {% if p[1] == lancamento[6] %}selected{% endif %}>{{ p[1] }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="form-group">
+    <label>Descrição:</label>
+    <textarea name="descricao">{{ lancamento[5] }}</textarea>
+  </div>
+  <div class="form-actions">
+    <button type="submit">Salvar Alterações</button>
+    <a href="{{ url_for('lancamentos') }}" class="btn-acao" style="margin-left:1rem;">Cancelar</a>
+  </div>
+</form>
+{% endblock %}

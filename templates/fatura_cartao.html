@@ -1,0 +1,507 @@
+{% extends 'base.html' %}
+
+{% block title %}Central de Cartoes | Orcamento Pessoal{% endblock %}
+
+{% block pdf_subtitle %}
+<p>Visao consolidada da fatura, despesas fora do cartao e acessos as analises da competencia {{ filtros.competencia[5:7] }}/{{ filtros.competencia[0:4] }}.</p>
+{% endblock %}
+
+{% block content %}
+{% if pdf_mode %}
+<section class="pdf-meta-grid">
+  <article class="pdf-meta-card">
+    <span class="metric-label">Cartao</span>
+    <strong>{{ cartao_nome or 'Nao informado' }}</strong>
+    <small>Competencia {{ filtros.competencia[5:7] }}/{{ filtros.competencia[0:4] }}</small>
+  </article>
+  <article class="pdf-meta-card">
+    <span class="metric-label">Status da fatura</span>
+    <strong>{{ fatura.status|capitalize if fatura else 'Nao apurada' }}</strong>
+    <small>{% if fatura and fatura.fechado_em %}Fechada em {{ fatura.fechado_em }}{% else %}Ainda aberta para apuracao{% endif %}</small>
+  </article>
+  <article class="pdf-meta-card">
+    <span class="metric-label">Proxima competencia</span>
+    <strong>{{ proxima_fatura[5:7] }}/{{ proxima_fatura[0:4] }}</strong>
+    <small>Referencia para lancamentos que precisem ser movidos</small>
+  </article>
+</section>
+
+<section class="pdf-summary-grid">
+  <article class="pdf-summary-card">
+    <span class="metric-label">Total da fatura</span>
+    <strong>R$ {{ '%.2f'|format(total_fatura or 0) }}</strong>
+    <small>{{ lancamentos|length }} lancamento(s) vinculados</small>
+  </article>
+  <article class="pdf-summary-card">
+    <span class="metric-label">Disponiveis para apuracao</span>
+    <strong>R$ {{ '%.2f'|format(total_candidatos or 0) }}</strong>
+    <small>{{ candidatos|length }} item(ns) sem fatura</small>
+  </article>
+  <article class="pdf-summary-card">
+    <span class="metric-label">Outras despesas do mes</span>
+    <strong>R$ {{ '%.2f'|format(total_outras_despesas or 0) }}</strong>
+    <small>Despesas do periodo fora do cartao</small>
+  </article>
+  <article class="pdf-summary-card">
+    <span class="metric-label">Receitas do mes</span>
+    <strong>R$ {{ '%.2f'|format(total_receita_mes or 0) }}</strong>
+    <small>Entradas fora da estrutura da fatura</small>
+  </article>
+</section>
+
+<section class="pdf-two-column">
+  <section class="pdf-report-section">
+    <div class="pdf-section-header">
+      <div>
+        <h2>Resumo por categoria da fatura</h2>
+        <p>Quais categorias mais pesam na competencia do cartao.</p>
+      </div>
+    </div>
+    <table class="pdf-report-table">
+      <thead>
+        <tr>
+          <th style="width: 66%;">Categoria</th>
+          <th style="width: 34%;">Valor</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in categorias_fatura %}
+        <tr>
+          <td>{{ item.categoria }}</td>
+          <td class="cell-amount">R$ {{ '%.2f'|format(item.valor or 0) }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="2">Sem categorias apuradas nesta fatura.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="pdf-report-section">
+    <div class="pdf-section-header">
+      <div>
+        <h2>Despesas fora do cartao</h2>
+        <p>Saidas do mesmo mes em outras formas de pagamento.</p>
+      </div>
+    </div>
+    <table class="pdf-report-table">
+      <thead>
+        <tr>
+          <th style="width: 66%;">Forma de pagamento</th>
+          <th style="width: 34%;">Valor</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in outras_despesas %}
+        <tr>
+          <td>{{ item.forma }}</td>
+          <td class="cell-amount">R$ {{ '%.2f'|format(item.valor or 0) }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="2">Nao ha despesas fora do cartao no periodo.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</section>
+
+<section class="pdf-report-section">
+  <div class="pdf-section-header">
+    <div>
+      <h2>Lancamentos da fatura</h2>
+      <p>Composicao completa da fatura apurada.</p>
+    </div>
+  </div>
+  <table class="pdf-report-table">
+    <thead>
+      <tr>
+        <th style="width: 12%;">Data</th>
+        <th style="width: 12%;">Compra</th>
+        <th style="width: 28%;">Descricao</th>
+        <th style="width: 16%;">Categoria</th>
+        <th style="width: 14%;">Pagador</th>
+        <th style="width: 8%;">Origem</th>
+        <th style="width: 10%;">Valor</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for lanc in lancamentos %}
+      <tr>
+        <td>{{ lanc.data }}</td>
+        <td>{{ lanc.data_compra }}</td>
+        <td>{{ lanc.descricao or '-' }}</td>
+        <td>{{ lanc.categoria }}</td>
+        <td>{{ lanc.pagador }}</td>
+        <td>{{ lanc.origem }}</td>
+        <td class="cell-amount">R$ {{ '%.2f'|format(lanc.valor or 0) }}</td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="7">Nenhum lancamento vinculado a esta fatura.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% if candidatos %}
+<section class="pdf-report-section">
+  <div class="pdf-section-header">
+    <div>
+      <h2>Itens ainda sem fatura</h2>
+      <p>Despesas do cartao que continuam pendentes de apuracao.</p>
+    </div>
+  </div>
+  <table class="pdf-report-table">
+    <thead>
+      <tr>
+        <th style="width: 12%;">Data</th>
+        <th style="width: 12%;">Compra</th>
+        <th style="width: 28%;">Descricao</th>
+        <th style="width: 16%;">Categoria</th>
+        <th style="width: 14%;">Pagador</th>
+        <th style="width: 8%;">Origem</th>
+        <th style="width: 10%;">Valor</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for lanc in candidatos %}
+      <tr>
+        <td>{{ lanc.data }}</td>
+        <td>{{ lanc.data_compra }}</td>
+        <td>{{ lanc.descricao or '-' }}</td>
+        <td>{{ lanc.categoria }}</td>
+        <td>{{ lanc.pagador }}</td>
+        <td>{{ lanc.origem }}</td>
+        <td class="cell-amount">R$ {{ '%.2f'|format(lanc.valor or 0) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+{% else %}
+<section class="page-header">
+  <div>
+    <span class="eyebrow">Cartoes e despesas</span>
+    <h1>Central de cartoes</h1>
+    <p>Gerencie faturas, acompanhe o que ficou fora do cartao e navegue pelas analises da competencia.</p>
+  </div>
+</section>
+
+{% if request.args.get('sucesso') %}
+<div class="alert alert-success">{{ request.args.get('sucesso') }}</div>
+{% endif %}
+{% if request.args.get('erro') %}
+<div class="alert alert-danger">{{ request.args.get('erro') }}</div>
+{% endif %}
+
+<section class="panel period-filter">
+  <form method="get" action="{{ url_for('fatura_cartao') }}" class="filters-form card-bill-filters">
+    <div>
+      <label for="forma_pagamento_id">Cartao</label>
+      <select id="forma_pagamento_id" name="forma_pagamento_id" required>
+        {% for cartao in cartoes %}
+        <option value="{{ cartao[0] }}" {{ 'selected' if filtros.forma_pagamento_id|string == cartao[0]|string else '' }}>
+          {{ cartao[1] }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="competencia">Competencia</label>
+      <input type="month" id="competencia" name="competencia" value="{{ filtros.competencia }}" required>
+    </div>
+    <div>
+      <label for="busca">Buscar</label>
+      <input type="text" id="busca" name="busca" value="{{ filtros.busca }}" placeholder="Descricao, categoria ou pagador">
+    </div>
+    <div class="filter-actions">
+      <button type="submit" class="btn btn-primary">Atualizar central</button>
+      <a href="{{ url_for('fatura_cartao') }}" class="btn btn-secondary">Limpar</a>
+    </div>
+  </form>
+</section>
+
+{% if not cartoes %}
+<div class="alert alert-danger">Cadastre uma forma de pagamento do tipo cartao de credito e informe o dia de fechamento para usar esta rotina.</div>
+{% else %}
+<section class="metric-grid category-summary">
+  <article class="metric-card">
+    <span class="metric-label">Status da fatura</span>
+    <strong>{{ fatura.status|capitalize if fatura else 'Nao apurada' }}</strong>
+    <small>{% if fatura and fatura.fechado_em %}Fechada em {{ fatura.fechado_em }}{% else %}Competencia {{ filtros.competencia[5:7] }}/{{ filtros.competencia[0:4] }}{% endif %}</small>
+  </article>
+  <article class="metric-card">
+    <span class="metric-label">Total da fatura</span>
+    <strong>R$ {{ '%.2f'|format(total_fatura) }}</strong>
+    <small>{{ lancamentos|length }} lancamento(s) vinculados</small>
+  </article>
+  <article class="metric-card">
+    <span class="metric-label">Disponiveis para apuracao</span>
+    <strong>R$ {{ '%.2f'|format(total_candidatos) }}</strong>
+    <small>{{ candidatos|length }} lancamento(s) ainda sem fatura</small>
+  </article>
+  <article class="metric-card">
+    <span class="metric-label">Outras despesas do mes</span>
+    <strong>R$ {{ '%.2f'|format(total_outras_despesas) }}</strong>
+    <small>Saidas no periodo fora do cartao</small>
+  </article>
+</section>
+
+<section class="content-grid">
+  <article class="panel invoice-actions">
+    <div>
+      <span class="eyebrow">Central da competencia</span>
+      <h2>{{ cartao_nome or 'Cartao' }}</h2>
+      <p>
+        A apuracao inclui despesas desse cartao que ainda nao estao em nenhuma fatura e tenham data ate a competencia selecionada.
+        Use esta tela como ponto de partida para revisar a fatura, o rateio entre pagadores e o impacto por categoria.
+      </p>
+    </div>
+    <div class="invoice-button-row">
+      <a href="{{ url_for('relatorio_divisao_pagadores', modo_analise='fatura', forma_pagamento_id=filtros.forma_pagamento_id, fatura_competencia=filtros.competencia) }}" class="btn btn-secondary">Rateio da fatura</a>
+      <a href="{{ url_for('relatorio_consolidado', competencia=filtros.competencia) }}" class="btn btn-secondary">Categorias do fechamento</a>
+      <a href="{{ url_for('relatorio_planejado', competencia=filtros.competencia) }}" class="btn btn-secondary">Orcamento do fechamento</a>
+      <a href="{{ url_for('lancamentos', forma_pagamento_id=filtros.forma_pagamento_id, fatura_competencia=filtros.competencia, tipo='despesa') }}" class="btn btn-secondary">Movimentos desta fatura</a>
+      <a href="{{ url_for('conciliar_fatura_cartao', forma_pagamento_id=filtros.forma_pagamento_id, competencia=filtros.competencia) }}" class="btn btn-secondary">Conciliar arquivo do banco</a>
+      <a href="{{ url_for('fechamento_mensal', competencia=filtros.competencia) }}" class="btn btn-secondary">Fechamento do mes</a>
+    </div>
+    <div class="invoice-button-row">
+      <form method="post" action="{{ url_for('apurar_fatura_cartao') }}">
+        <input type="hidden" name="forma_pagamento_id" value="{{ filtros.forma_pagamento_id }}">
+        <input type="hidden" name="competencia" value="{{ filtros.competencia }}">
+        <input type="hidden" name="busca" value="{{ filtros.busca }}">
+        <button type="submit" class="btn btn-primary" {% if fatura and fatura.status == 'fechada' %}disabled{% endif %}>
+          {{ 'Apurar novamente' if fatura else 'Apurar fatura' }}
+        </button>
+      </form>
+      {% if fatura and fatura.status != 'fechada' %}
+      <form method="post" action="{{ url_for('fechar_fatura_cartao', fatura_id=fatura.id) }}" onsubmit="return confirm('Confirmar fechamento desta fatura?');">
+        <input type="hidden" name="forma_pagamento_id" value="{{ filtros.forma_pagamento_id }}">
+        <input type="hidden" name="competencia" value="{{ filtros.competencia }}">
+        <button type="submit" class="btn btn-secondary">Fechar fatura</button>
+      </form>
+      {% elif fatura and fatura.status == 'fechada' %}
+      <form method="post" action="{{ url_for('reabrir_fatura_cartao', fatura_id=fatura.id) }}">
+        <input type="hidden" name="forma_pagamento_id" value="{{ filtros.forma_pagamento_id }}">
+        <input type="hidden" name="competencia" value="{{ filtros.competencia }}">
+        <button type="submit" class="btn btn-secondary">Reabrir fatura</button>
+      </form>
+      {% endif %}
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="panel-header">
+      <div>
+        <h2>Visao do mes fora do cartao</h2>
+        <p>Para a gestao pessoal nao ficar restrita ao cartao, acompanhe aqui o restante do mes.</p>
+      </div>
+    </div>
+    <div class="finance-list">
+      <div class="finance-list-row">
+        <span>Receitas do periodo</span>
+        <strong>R$ {{ '%.2f'|format(total_receita_mes) }}</strong>
+      </div>
+      <div class="finance-list-row">
+        <span>Despesas fora do cartao</span>
+        <strong>R$ {{ '%.2f'|format(total_outras_despesas) }}</strong>
+      </div>
+      {% for item in outras_despesas %}
+      <div class="finance-list-row">
+        <span>{{ item.forma }}</span>
+        <strong>R$ {{ '%.2f'|format(item.valor or 0) }}</strong>
+      </div>
+      {% else %}
+      <p class="muted">Nao ha despesas fora do cartao nesta competencia.</p>
+      {% endfor %}
+    </div>
+  </article>
+</section>
+
+<section class="content-grid">
+  <article class="panel">
+    <div class="panel-header">
+      <div>
+        <h2>Categorias da fatura</h2>
+        <p>As maiores categorias ajudam a entender rapidamente o peso da fatura.</p>
+      </div>
+    </div>
+    <div class="finance-list">
+      {% for item in categorias_fatura[:6] %}
+      <div class="finance-list-row">
+        <span>{{ item.categoria }}</span>
+        <strong>R$ {{ '%.2f'|format(item.valor or 0) }}</strong>
+      </div>
+      {% else %}
+      <p class="muted">Apure a fatura para visualizar o ranking por categoria.</p>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="panel-header">
+      <div>
+        <h2>Atalhos de navegacao</h2>
+        <p>Use estes acessos para revisar a competencia sem refazer filtros.</p>
+      </div>
+    </div>
+    <div class="invoice-button-row">
+      <a href="{{ url_for('lancamentos', data_inicio=filtros.competencia ~ '-01', data_fim=competencia_fim_visual, tipo='despesa') }}" class="btn btn-secondary">Despesas do mes</a>
+      <a href="{{ url_for('lancamentos', data_inicio=filtros.competencia ~ '-01', data_fim=competencia_fim_visual, tipo='receita') }}" class="btn btn-secondary">Receitas do mes</a>
+      <a href="{{ url_for('index', competencia=filtros.competencia) }}" class="btn btn-secondary">Painel do mes</a>
+    </div>
+  </article>
+</section>
+
+<section class="table-container table-section card-bill-section">
+  <div class="table-toolbar">
+    <div>
+      <h2>Lancamentos da fatura</h2>
+      <p>Use a selecao para reorganizar compras que nao devem permanecer nesta competencia.</p>
+    </div>
+    {% if fatura and fatura.status != 'fechada' and lancamentos %}
+    <div class="invoice-button-row">
+      <form id="formMoverProxima" method="post" action="{{ url_for('mover_itens_proxima_fatura') }}" onsubmit="return prepararAcaoFatura(this, 'Mover os lancamentos selecionados para a proxima fatura?');">
+        <input type="hidden" name="forma_pagamento_id" value="{{ filtros.forma_pagamento_id }}">
+        <input type="hidden" name="competencia" value="{{ filtros.competencia }}">
+        <input type="hidden" name="fatura_id" value="{{ fatura.id }}">
+        <button type="submit" class="btn btn-secondary">Mover para proxima fatura</button>
+      </form>
+      <form id="formMoverCompetencia" class="invoice-target-form" method="post" action="{{ url_for('mover_itens_competencia_fatura') }}" onsubmit="return prepararAcaoFatura(this, 'Mover os lancamentos selecionados para a competencia informada?');">
+        <input type="hidden" name="forma_pagamento_id" value="{{ filtros.forma_pagamento_id }}">
+        <input type="hidden" name="competencia" value="{{ filtros.competencia }}">
+        <input type="hidden" name="fatura_id" value="{{ fatura.id }}">
+        <input type="month" name="competencia_destino" value="{{ proxima_fatura }}" required aria-label="Competencia de destino">
+        <button type="submit" class="btn btn-secondary">Mover de competencia</button>
+      </form>
+      <form id="formRemoverFatura" method="post" action="{{ url_for('remover_itens_fatura_cartao') }}" onsubmit="return prepararAcaoFatura(this, 'Remover os lancamentos selecionados desta fatura?');">
+        <input type="hidden" name="forma_pagamento_id" value="{{ filtros.forma_pagamento_id }}">
+        <input type="hidden" name="competencia" value="{{ filtros.competencia }}">
+        <input type="hidden" name="fatura_id" value="{{ fatura.id }}">
+        <button type="submit" class="btn btn-secondary subtle-action">Remover da fatura</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        {% if fatura and fatura.status != 'fechada' %}<th><input type="checkbox" id="selecionarFatura" onchange="alternarSelecaoFatura(this)"></th>{% endif %}
+        <th>Data na fatura</th>
+        <th>Data da compra</th>
+        <th>Descricao</th>
+        <th>Categoria</th>
+        <th>Pagador</th>
+        <th>Origem</th>
+        <th>Valor</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for lanc in lancamentos %}
+      <tr>
+        {% if fatura and fatura.status != 'fechada' %}<td><input type="checkbox" name="lancamento_fatura" value="{{ lanc.id }}"></td>{% endif %}
+        <td>{{ lanc.data }}</td>
+        <td>{{ lanc.data_compra }}</td>
+        <td><strong>{{ lanc.descricao or '-' }}</strong></td>
+        <td><a href="{{ url_for('lancamentos', forma_pagamento_id=filtros.forma_pagamento_id, fatura_competencia=filtros.competencia, categoria_id='', tipo='despesa', busca=lanc.categoria) }}">{{ lanc.categoria }}</a></td>
+        <td>{{ lanc.pagador }}</td>
+        <td><span class="status {{ 'pendente' if lanc.origem == 'pluggy' else 'receita' }}">{{ lanc.origem }}</span></td>
+        <td>R$ {{ '%.2f'|format(lanc.valor) }}</td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="{{ 8 if fatura and fatura.status != 'fechada' else 7 }}">Nenhum lancamento vinculado a esta fatura.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr>
+        <th colspan="{{ 7 if fatura and fatura.status != 'fechada' else 6 }}">Total da fatura</th>
+        <th>R$ {{ '%.2f'|format(total_fatura) }}</th>
+      </tr>
+    </tfoot>
+  </table>
+</section>
+
+<section class="table-container table-section">
+  <div class="table-toolbar">
+    <div>
+      <h2>Disponiveis para apuracao</h2>
+      <p>Despesas do cartao ainda sem fatura. Ao apurar, elas entram na competencia selecionada.</p>
+    </div>
+    <span class="pill">R$ {{ '%.2f'|format(total_candidatos) }}</span>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Data na fatura</th>
+        <th>Data da compra</th>
+        <th>Descricao</th>
+        <th>Categoria</th>
+        <th>Pagador</th>
+        <th>Origem</th>
+        <th>Valor</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for lanc in candidatos %}
+      <tr class="pending-row">
+        <td>{{ lanc.data }}</td>
+        <td>{{ lanc.data_compra }}</td>
+        <td><strong>{{ lanc.descricao or '-' }}</strong></td>
+        <td>{{ lanc.categoria }}</td>
+        <td>{{ lanc.pagador }}</td>
+        <td><span class="status {{ 'pendente' if lanc.origem == 'pluggy' else 'receita' }}">{{ lanc.origem }}</span></td>
+        <td>R$ {{ '%.2f'|format(lanc.valor) }}</td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="7">Nao ha despesas pendentes para apuracao nesta competencia.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if not pdf_mode %}
+<script>
+function alternarSelecaoFatura(master) {
+  document.querySelectorAll('input[name="lancamento_fatura"]').forEach((checkbox) => {
+    checkbox.checked = master.checked;
+  });
+}
+
+function prepararAcaoFatura(form, mensagem) {
+  form.querySelectorAll('input[name="lancamento_ids"]').forEach((input) => input.remove());
+  const selecionados = document.querySelectorAll('input[name="lancamento_fatura"]:checked');
+  if (!selecionados.length) {
+    alert('Selecione ao menos um lancamento.');
+    return false;
+  }
+  if (!confirm(mensagem)) {
+    return false;
+  }
+  selecionados.forEach((checkbox) => {
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'lancamento_ids';
+    input.value = checkbox.value;
+    form.appendChild(input);
+  });
+  return true;
+}
+</script>
+{% endif %}
+{% endblock %}
