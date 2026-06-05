@@ -1,0 +1,291 @@
+{% extends 'base.html' %}
+
+{% block title %}Conciliador de fatura | Orcamento Pessoal{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <span class="eyebrow">Conciliacao de cartao</span>
+    <h1>Conciliar fatura importada</h1>
+    <p>Compare o arquivo do banco com os lancamentos ja apurados na fatura do cartao.</p>
+  </div>
+  <a href="{{ url_for('fatura_cartao', forma_pagamento_id=filtros.forma_pagamento_id, competencia=filtros.competencia) }}" class="btn btn-secondary">Voltar para fatura</a>
+</section>
+
+{% if erro %}
+<div class="alert alert-danger">{{ erro }}</div>
+{% endif %}
+
+<section class="panel">
+  <form method="post" action="{{ url_for('conciliar_fatura_cartao') }}" enctype="multipart/form-data" class="filters-form reconciliation-form">
+    <div>
+      <label for="banco">Banco</label>
+      <select id="banco" name="banco" required>
+        {% for codigo, nome in bancos %}
+        <option value="{{ codigo }}" {{ 'selected' if filtros.banco == codigo else '' }}>{{ nome }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="forma_pagamento_id">Cartao</label>
+      <select id="forma_pagamento_id" name="forma_pagamento_id" required>
+        {% for cartao in cartoes %}
+        <option value="{{ cartao[0] }}" {{ 'selected' if filtros.forma_pagamento_id|string == cartao[0]|string else '' }}>{{ cartao[1] }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="competencia">Competencia</label>
+      <input type="month" id="competencia" name="competencia" value="{{ filtros.competencia }}" required>
+    </div>
+    <div>
+      <label for="arquivo">Arquivo da fatura</label>
+      <input type="file" id="arquivo" name="arquivo" accept=".csv,.xls,.xlsx" required>
+    </div>
+    <div class="filter-actions">
+      <button type="submit" class="btn btn-primary">Conciliar arquivo</button>
+    </div>
+  </form>
+  <p class="field-help reconciliation-help">
+    Layout atual homologado: Itau CSV com colunas data, lancamento e valor. Os demais bancos ja ficam disponiveis para receber novos layouts.
+  </p>
+</section>
+
+{% if fatura %}
+<section class="metric-grid category-summary">
+  <article class="metric-card">
+    <span class="metric-label">Fatura do sistema</span>
+    <strong>{{ fatura.status|capitalize }}</strong>
+    <small>{{ cartao_selecionado[1] if cartao_selecionado else 'Cartao' }} - {{ fatura.competencia_label }}</small>
+  </article>
+  <article class="metric-card">
+    <span class="metric-label">Lancamentos no sistema</span>
+    <strong>{{ lancamentos_sistema|length }}</strong>
+    <small>Itens ja apurados nesta fatura</small>
+  </article>
+  <article class="metric-card">
+    <span class="metric-label">Total no sistema</span>
+    <strong>R$ {{ '%.2f'|format((resultado.total_sistema if resultado else lancamentos_sistema|sum(attribute='valor')) or 0) }}</strong>
+    <small>Soma dos lancamentos apurados</small>
+  </article>
+  <article class="metric-card">
+    <span class="metric-label">Arquivo</span>
+    <strong>{{ arquivo_nome or 'Aguardando anexo' }}</strong>
+    <small>CSV, XLS ou XLSX</small>
+  </article>
+</section>
+{% endif %}
+
+{% if resultado %}
+<section class="metric-grid category-summary">
+  <article class="metric-card positive">
+    <span class="metric-label">Conciliados</span>
+    <strong>{{ resultado.conciliados|length }}</strong>
+    <small>Valor e data iguais</small>
+  </article>
+  <article class="metric-card">
+    <span class="metric-label">Possiveis divergencias</span>
+    <strong>{{ resultado.provaveis|length }}</strong>
+    <small>Mesmo valor com data proxima ou pequena diferenca</small>
+  </article>
+  <article class="metric-card negative">
+    <span class="metric-label">So no arquivo</span>
+    <strong>{{ resultado.arquivo_sem_match|length }}</strong>
+    <small>Itens do banco sem par no sistema</small>
+  </article>
+  <article class="metric-card negative">
+    <span class="metric-label">So no sistema</span>
+    <strong>{{ resultado.sistema_sem_match|length }}</strong>
+    <small>Itens apurados sem par no arquivo</small>
+  </article>
+</section>
+
+<section class="table-container table-section">
+  <div class="table-toolbar">
+    <div>
+      <h2>Conciliados automaticamente</h2>
+      <p>{{ resultado.conciliados|length }} lancamento(s) com valor e data equivalentes.</p>
+    </div>
+    <span class="pill">Arquivo: R$ {{ '%.2f'|format(resultado.total_arquivo or 0) }}</span>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Banco</th>
+        <th>Sistema</th>
+        <th>Valor banco</th>
+        <th>Valor sistema</th>
+        <th>Categoria</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in resultado.conciliados %}
+      <tr>
+        <td><strong>{{ item.arquivo.descricao }}</strong><br><small>{{ item.arquivo.data_label }}</small></td>
+        <td><strong>{{ item.sistema.descricao or '-' }}</strong><br><small>{{ item.sistema.data_compra }}</small></td>
+        <td>R$ {{ '%.2f'|format(item.arquivo.valor) }}</td>
+        <td>R$ {{ '%.2f'|format(item.sistema.valor) }}</td>
+        <td>{{ item.sistema.categoria }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5">Nenhum item conciliado automaticamente.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="table-container table-section">
+  <div class="table-toolbar">
+    <div>
+      <h2>Possiveis conciliacoes</h2>
+      <p>Revise itens com data proxima, descricao diferente ou pequena diferenca de valor.</p>
+    </div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Banco</th>
+        <th>Sistema</th>
+        <th>Diferenca</th>
+        <th>Similaridade</th>
+        <th>Acoes</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in resultado.provaveis %}
+      <tr data-reconciliation-row>
+        <td><strong>{{ item.arquivo.descricao }}</strong><br><small>{{ item.arquivo.data_label }} - R$ {{ '%.2f'|format(item.arquivo.valor) }}</small></td>
+        <td><strong>{{ item.sistema.descricao or '-' }}</strong><br><small>{{ item.sistema.data_compra }} - R$ {{ '%.2f'|format(item.sistema.valor) }}</small></td>
+        <td>{{ item.diferenca_dias }} dia(s) / R$ {{ '%.2f'|format(item.diferenca_valor or 0) }}</td>
+        <td>{{ '%.0f'|format((item.similaridade or 0) * 100) }}%</td>
+        <td>
+          <button type="button" class="link-action" data-confirm-manual>Confirmar nesta analise</button>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5">Nenhuma conciliacao provavel encontrada.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="content-grid">
+  <article class="table-container table-section">
+    <div class="table-toolbar">
+      <div>
+        <h2>Somente no arquivo do banco</h2>
+        <p>Podem ser encargos, IOF, estornos ou compras nao lancadas no sistema.</p>
+      </div>
+    </div>
+    <table>
+      <thead><tr><th>Data</th><th>Descricao</th><th>Valor</th><th>Conciliacao manual</th><th>Acoes</th></tr></thead>
+      <tbody>
+        {% for item in resultado.arquivo_sem_match %}
+        <tr data-bank-row="bank-{{ loop.index }}">
+          <td>{{ item.data_label }}</td>
+          <td><strong>{{ item.descricao }}</strong></td>
+          <td>R$ {{ '%.2f'|format(item.valor) }}</td>
+          <td>
+            <div class="manual-reconcile-controls">
+              <select data-system-target>
+                <option value="">Selecionar item do sistema</option>
+                {% for sistema in resultado.sistema_sem_match %}
+                <option value="{{ sistema.id }}">#{{ sistema.id }} - {{ sistema.data_compra }} - R$ {{ '%.2f'|format(sistema.valor) }} - {{ sistema.descricao or sistema.categoria }}</option>
+                {% endfor %}
+              </select>
+              <button type="button" class="link-action" data-bank-source="bank-{{ loop.index }}" data-confirm-pair>Marcar par</button>
+            </div>
+          </td>
+          <td>
+            <div class="table-actions">
+              <a class="link-action" href="{{ url_for('lancamentos', data_inicio=item.data, data_fim=item.data, tipo='despesa', forma_pagamento_id=filtros.forma_pagamento_id, busca=item.descricao) }}">Procurar</a>
+              <a class="link-action" href="{{ url_for('lancamentos', data_inicio=item.data, data_fim=item.data, tipo='despesa', forma_pagamento_id=filtros.forma_pagamento_id) }}">Ver dia</a>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">Nenhum item pendente do arquivo.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </article>
+
+  <article class="table-container table-section">
+    <div class="table-toolbar">
+      <div>
+        <h2>Somente no sistema</h2>
+        <p>Itens apurados que nao apareceram no arquivo enviado.</p>
+      </div>
+    </div>
+    <table>
+      <thead><tr><th>Data</th><th>Descricao</th><th>Valor</th><th>Acoes</th></tr></thead>
+      <tbody>
+        {% for item in resultado.sistema_sem_match %}
+        <tr data-system-row="{{ item.id }}">
+          <td>{{ item.data_compra }}</td>
+          <td><strong>{{ item.descricao or '-' }}</strong><br><small>{{ item.categoria }}</small></td>
+          <td>R$ {{ '%.2f'|format(item.valor) }}</td>
+          <td>
+            <div class="table-actions">
+              <a class="link-action" href="{{ url_for('lancamentos', forma_pagamento_id=filtros.forma_pagamento_id, fatura_competencia=filtros.competencia, tipo='despesa', busca=item.descricao) }}">Ver movimento</a>
+              {% if fatura and fatura.status != 'fechada' %}
+              <form method="post" action="{{ url_for('remover_itens_fatura_cartao') }}" class="inline-action" onsubmit="return confirm('Remover este lancamento da fatura?');">
+                <input type="hidden" name="forma_pagamento_id" value="{{ filtros.forma_pagamento_id }}">
+                <input type="hidden" name="competencia" value="{{ filtros.competencia }}">
+                <input type="hidden" name="fatura_id" value="{{ fatura.id }}">
+                <input type="hidden" name="lancamento_ids" value="{{ item.id }}">
+                <input type="hidden" name="return_to" value="{{ url_for('conciliar_fatura_cartao', forma_pagamento_id=filtros.forma_pagamento_id, competencia=filtros.competencia, banco=filtros.banco) }}">
+                <button type="submit" class="link-action danger-link">Remover da fatura</button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4">Nenhum item pendente do sistema.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </article>
+</section>
+{% elif not fatura and filtros.forma_pagamento_id %}
+<div class="alert alert-danger">Esta competencia ainda nao possui fatura apurada no sistema. Apure a fatura antes de conciliar.</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.querySelectorAll('[data-confirm-manual]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const row = button.closest('[data-reconciliation-row]');
+      row.classList.add('manual-reconciled-row');
+      button.textContent = 'Conciliado manualmente';
+      button.disabled = true;
+    });
+  });
+
+  document.querySelectorAll('[data-confirm-pair]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const bankRow = document.querySelector(`[data-bank-row="${button.dataset.bankSource}"]`);
+      const select = bankRow ? bankRow.querySelector('[data-system-target]') : null;
+      const systemId = select ? select.value : '';
+      if (!systemId) {
+        alert('Selecione um item do sistema para marcar o par.');
+        return;
+      }
+      const systemRow = document.querySelector(`[data-system-row="${systemId}"]`);
+      if (bankRow) {
+        bankRow.classList.add('manual-reconciled-row');
+      }
+      if (systemRow) {
+        systemRow.classList.add('manual-reconciled-row');
+      }
+      button.textContent = 'Par marcado';
+      button.disabled = true;
+      if (select) {
+        select.disabled = true;
+      }
+    });
+  });
+</script>
+{% endblock %}

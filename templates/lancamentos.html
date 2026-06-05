@@ -1,0 +1,519 @@
+{% extends 'base.html' %}
+
+{% block title %}Movimentos | Orcamento Pessoal{% endblock %}
+
+{% block pdf_subtitle %}
+<p>Relatorio de movimentos financeiros com filtros aplicados para conferencia, analise mensal ou revisao de fatura.</p>
+{% endblock %}
+
+{% block content %}
+{% if pdf_mode %}
+<section class="pdf-meta-grid">
+  <article class="pdf-meta-card">
+    <span class="metric-label">Periodo</span>
+    <strong>{{ periodo_label }}</strong>
+    <small>{% if filtros.fatura_competencia %}Fatura {{ filtros.fatura_competencia[5:7] }}/{{ filtros.fatura_competencia[0:4] }}{% else %}Filtro por data{% endif %}</small>
+  </article>
+  <article class="pdf-meta-card">
+    <span class="metric-label">Escopo</span>
+    <strong>{{ filtros.tipo or 'Receitas e despesas' }}</strong>
+    <small>{{ categoria_nome or 'Todas as categorias' }} / {{ filtros.pagador or 'Todos os pagadores' }}</small>
+  </article>
+  <article class="pdf-meta-card">
+    <span class="metric-label">Forma de pagamento</span>
+    <strong>{{ forma_pagamento_nome or 'Todas as formas' }}</strong>
+    <small>{{ filtros.origem or 'Todas as origens' }}</small>
+  </article>
+</section>
+
+<section class="pdf-summary-grid">
+  <article class="pdf-summary-card">
+    <span class="metric-label">Registros filtrados</span>
+    <strong>{{ total_filtrado }}</strong>
+    <small>Movimentos encontrados</small>
+  </article>
+  <article class="pdf-summary-card">
+    <span class="metric-label">Receitas</span>
+    <strong>R$ {{ '%.2f'|format(total_receita) }}</strong>
+    <small>Total conforme filtros</small>
+  </article>
+  <article class="pdf-summary-card">
+    <span class="metric-label">Despesas</span>
+    <strong>R$ {{ '%.2f'|format(total_despesa) }}</strong>
+    <small>Total conforme filtros</small>
+  </article>
+  <article class="pdf-summary-card">
+    <span class="metric-label">Saldo</span>
+    <strong>R$ {{ '%.2f'|format(total_receita - total_despesa) }}</strong>
+    <small>Receitas menos despesas</small>
+  </article>
+</section>
+
+<section class="pdf-report-section">
+  <div class="pdf-section-header">
+    <div>
+      <h2>Movimentos filtrados</h2>
+      <p>Tabela preparada para revisao mensal, conferencia por forma e auditoria de faturas.</p>
+    </div>
+  </div>
+  <table class="pdf-report-table">
+    <thead>
+      <tr>
+        <th style="width: 11%;">Data</th>
+        <th style="width: 10%;">Tipo</th>
+        <th style="width: 12%;">Valor</th>
+        <th style="width: 14%;">Categoria</th>
+        <th style="width: 13%;">Pagador</th>
+        <th style="width: 14%;">Forma</th>
+        <th style="width: 10%;">Fatura</th>
+        <th style="width: 8%;">Origem</th>
+        <th style="width: 8%;">Descricao</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for lanc in lancamentos %}
+      <tr>
+        <td>{{ lanc[1] }}</td>
+        <td>{{ lanc[2] }}</td>
+        <td class="cell-amount">R$ {{ '%.2f'|format(lanc[3] or 0) }}</td>
+        <td>{{ lanc[6] }}</td>
+        <td>{{ lanc[7] or '-' }}</td>
+        <td>{{ lanc[10] or '-' }}</td>
+        <td>{{ lanc[12] or '-' }}</td>
+        <td>{{ lanc[11] or 'manual' }}</td>
+        <td>{{ lanc[5] or '-' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% else %}
+<section class="page-header">
+  <div>
+    <span class="eyebrow">Movimento financeiro</span>
+    <h1>Movimentos</h1>
+    <p>Registre receitas, despesas, ajustes e acompanhe o que entrou na fatura ou fora dela.</p>
+  </div>
+</section>
+
+{% if sucesso %}
+<div class="alert alert-success">{{ sucesso }}</div>
+{% endif %}
+
+<section class="metric-grid category-summary">
+  <article class="metric-card">
+    <span class="metric-label">Registros filtrados</span>
+    <strong>{{ total_filtrado }}</strong>
+    <small>Movimentos encontrados</small>
+  </article>
+  <article class="metric-card">
+    <span class="metric-label">Receitas</span>
+    <strong>R$ {{ '%.2f'|format(total_receita) }}</strong>
+    <small>Total conforme filtros</small>
+  </article>
+  <article class="metric-card">
+    <span class="metric-label">Despesas</span>
+    <strong>R$ {{ '%.2f'|format(total_despesa) }}</strong>
+    <small>Total conforme filtros</small>
+  </article>
+  <article class="metric-card">
+    <span class="metric-label">Saldo</span>
+    <strong>R$ {{ '%.2f'|format(total_receita - total_despesa) }}</strong>
+    <small>Receitas menos despesas</small>
+  </article>
+</section>
+
+<section class="panel period-filter">
+  <form method="get" action="{{ url_for('lancamentos') }}" class="filters-form lancamento-filters">
+    <div>
+      <label for="data_inicio">Data inicial</label>
+      <input type="date" id="data_inicio" name="data_inicio" value="{{ filtros.data_inicio }}">
+    </div>
+    <div>
+      <label for="data_fim">Data final</label>
+      <input type="date" id="data_fim" name="data_fim" value="{{ filtros.data_fim }}">
+    </div>
+    <div>
+      <label for="tipoFiltro">Tipo</label>
+      <select id="tipoFiltro" name="tipo">
+        <option value="">Todos</option>
+        <option value="receita" {{ 'selected' if filtros.tipo == 'receita' else '' }}>Receita</option>
+        <option value="despesa" {{ 'selected' if filtros.tipo == 'despesa' else '' }}>Despesa</option>
+      </select>
+    </div>
+    <div>
+      <label for="categoriaFiltro">Categoria</label>
+      <select id="categoriaFiltro" name="categoria_id">
+        <option value="">Todas</option>
+        {% for c in categorias %}
+        <option value="{{ c[0] }}" data-tipo="{{ c[3] or 'despesa' }}" {{ 'selected' if filtros.categoria_id|string == c[0]|string else '' }}>{{ c[1] }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="pagadorFiltro">Pagador</label>
+      <select id="pagadorFiltro" name="pagador">
+        <option value="">Todos</option>
+        {% for p in pagadores %}
+        <option value="{{ p[1] }}" {{ 'selected' if filtros.pagador == p[1] else '' }}>{{ p[1] }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="formaFiltro">Forma</label>
+      <select id="formaFiltro" name="forma_pagamento_id">
+        <option value="">Todas</option>
+        {% for forma in formas_pagamento %}
+        <option value="{{ forma[0] }}" {{ 'selected' if filtros.forma_pagamento_id|string == forma[0]|string else '' }}>{{ forma[1] }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="faturaCompetenciaFiltro">Fatura</label>
+      <input type="month" id="faturaCompetenciaFiltro" name="fatura_competencia" value="{{ filtros.fatura_competencia }}">
+    </div>
+    <div>
+      <label for="origemFiltro">Origem</label>
+      <select id="origemFiltro" name="origem">
+        <option value="">Todas</option>
+        <option value="manual" {{ 'selected' if filtros.origem == 'manual' else '' }}>Manual</option>
+        <option value="pluggy" {{ 'selected' if filtros.origem == 'pluggy' else '' }}>Integracao bancaria</option>
+        <option value="csv" {{ 'selected' if filtros.origem == 'csv' else '' }}>CSV</option>
+      </select>
+    </div>
+    <div>
+      <label for="busca">Buscar</label>
+      <input type="text" id="busca" name="busca" value="{{ filtros.busca }}" placeholder="Descricao, categoria, pagador">
+    </div>
+    <div class="filter-actions">
+      <button type="submit" class="btn btn-primary">Filtrar</button>
+      <a href="{{ url_for('lancamentos') }}" class="btn btn-secondary">Limpar</a>
+    </div>
+  </form>
+</section>
+
+<div id="modal" class="modal hidden">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 id="tituloModal">Novo movimento</h2>
+      <button type="button" class="icon-button" id="fecharModal" aria-label="Fechar">&times;</button>
+    </div>
+    <form id="formLancamento" action="/adicionar_lancamento" method="post" class="modal-form">
+      <input type="hidden" name="lancamento_id" id="lancamento_id">
+      <input type="hidden" name="return_to" value="{{ return_to_url }}">
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Data</label>
+          <input type="date" name="data" required>
+        </div>
+
+        <div class="form-group">
+          <label>Tipo</label>
+          <select name="tipo" id="tipoLancamento" required>
+            <option value="receita">Receita</option>
+            <option value="despesa">Despesa</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Valor total</label>
+          <input type="number" step="0.01" name="valor" required>
+        </div>
+
+        <div class="form-group">
+          <label>Categoria</label>
+          <select name="categoria_id" id="categoriaLancamento" required>
+            {% for c in categorias %}
+            <option value="{{ c[0] }}" data-tipo="{{ c[3] or 'despesa' }}">{{ c[1] }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Pagador</label>
+        <select name="pagador">
+          <option value="">Selecione um pagador</option>
+          {% for p in pagadores %}
+          <option value="{{ p[1] }}">{{ p[1] }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Forma de pagamento</label>
+        <select name="forma_pagamento_id">
+          <option value="">Nao informada</option>
+          {% for forma in formas_pagamento %}
+          <option value="{{ forma[0] }}">{{ forma[1] }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Descricao</label>
+        <textarea name="descricao" rows="3"></textarea>
+      </div>
+
+      <div class="checkbox-group">
+        <label>
+          <input type="checkbox" name="parcelado" id="parcelado" onchange="toggleParcelas()">
+          Lancamento parcelado
+        </label>
+      </div>
+
+      <div id="campoParcelas" class="form-group hidden">
+        <label>Quantidade de parcelas</label>
+        <input type="number" name="parcelas" min="2">
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit">Salvar movimento</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<section class="panel batch-panel hidden" id="painelLote">
+  <form action="{{ url_for('lancamentos_acao_lote') }}" method="post" id="formAcaoLote">
+    <input type="hidden" name="return_to" value="{{ return_to_url }}">
+    <div id="idsAcaoLote"></div>
+    <div class="batch-header">
+      <div>
+        <span class="eyebrow">Organizacao em lote</span>
+        <h2><span id="totalSelecionados">0</span> selecionado(s)</h2>
+        <p>Preencha apenas os campos que deseja alterar nos movimentos selecionados.</p>
+      </div>
+    </div>
+    <div class="filters-form batch-filters">
+      <div>
+        <label for="categoriaLote">Categoria</label>
+        <select id="categoriaLote" name="categoria_id">
+          <option value="">Nao alterar</option>
+          {% for c in categorias %}
+          <option value="{{ c[0] }}">{{ c[1] }} ({{ c[3] or 'despesa' }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="pagadorLote">Pagador</label>
+        <select id="pagadorLote" name="pagador">
+          <option value="">Nao alterar</option>
+          <option value="__empty__">Limpar pagador</option>
+          {% for p in pagadores %}
+          <option value="{{ p[1] }}">{{ p[1] }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="formaLote">Forma de pagamento</label>
+        <select id="formaLote" name="forma_pagamento_id">
+          <option value="">Nao alterar</option>
+          <option value="__empty__">Limpar forma</option>
+          {% for forma in formas_pagamento %}
+          <option value="{{ forma[0] }}">{{ forma[1] }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="filter-actions">
+        <button type="submit" class="btn btn-primary">Aplicar alteracoes</button>
+      </div>
+    </div>
+  </form>
+</section>
+
+<div class="table-container">
+  <form method="post" action="/excluir_lancamentos" id="formExclusao">
+    <input type="hidden" name="return_to" value="{{ return_to_url }}">
+    <div class="mobile-lancamentos-list">
+      {% for lanc in lancamentos %}
+      <article class="mobile-lancamento-card">
+        <label class="mobile-lancamento-select">
+          <input type="checkbox" name="excluir_ids" value="{{ lanc[0] }}" onchange="verificarSelecao()">
+          <span>Selecionar movimento</span>
+        </label>
+        <div class="mobile-lancamento-top">
+          <div>
+            <strong>R$ {{ '%.2f'|format(lanc[3]) }}</strong>
+            <small>{{ lanc[1] }}{% if lanc[12] %} • Fatura {{ lanc[12] }}{% endif %}</small>
+          </div>
+          <span class="status {{ lanc[2] }}">{{ lanc[2] }}</span>
+        </div>
+        <div class="mobile-lancamento-main">
+          <strong>{{ lanc[6] }}</strong>
+          <p>{{ lanc[5] or '-' }}</p>
+        </div>
+        <div class="mobile-lancamento-meta">
+          <span><b>Pagador:</b> {{ lanc[7] or '-' }}</span>
+          <span><b>Forma:</b> {{ lanc[10] or '-' }}</span>
+          <span><b>Origem:</b> {{ lanc[11] or 'manual' }}</span>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th><input type="checkbox" id="selecionarTodos" onchange="selecionarTodosLancamentos(this)"></th>
+          <th><a href="{{ url_for('lancamentos', data_inicio=filtros.data_inicio, data_fim=filtros.data_fim, tipo=filtros.tipo, categoria_id=filtros.categoria_id, pagador=filtros.pagador, forma_pagamento_id=filtros.forma_pagamento_id, fatura_competencia=filtros.fatura_competencia, origem=filtros.origem, busca=filtros.busca, sort='data') }}">Data</a></th>
+          <th><a href="{{ url_for('lancamentos', data_inicio=filtros.data_inicio, data_fim=filtros.data_fim, tipo=filtros.tipo, categoria_id=filtros.categoria_id, pagador=filtros.pagador, forma_pagamento_id=filtros.forma_pagamento_id, fatura_competencia=filtros.fatura_competencia, origem=filtros.origem, busca=filtros.busca, sort='tipo') }}">Tipo</a></th>
+          <th><a href="{{ url_for('lancamentos', data_inicio=filtros.data_inicio, data_fim=filtros.data_fim, tipo=filtros.tipo, categoria_id=filtros.categoria_id, pagador=filtros.pagador, forma_pagamento_id=filtros.forma_pagamento_id, fatura_competencia=filtros.fatura_competencia, origem=filtros.origem, busca=filtros.busca, sort='valor') }}">Valor</a></th>
+          <th><a href="{{ url_for('lancamentos', data_inicio=filtros.data_inicio, data_fim=filtros.data_fim, tipo=filtros.tipo, categoria_id=filtros.categoria_id, pagador=filtros.pagador, forma_pagamento_id=filtros.forma_pagamento_id, fatura_competencia=filtros.fatura_competencia, origem=filtros.origem, busca=filtros.busca, sort='categoria') }}">Categoria</a></th>
+          <th>Pagador</th>
+          <th>Forma</th>
+          <th>Fatura</th>
+          <th>Origem</th>
+          <th>Descricao</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for lanc in lancamentos %}
+        <tr
+          data-id="{{ lanc[0] }}"
+          data-data="{{ lanc[8] }}"
+          data-tipo="{{ lanc[2] }}"
+          data-valor="{{ '%.2f'|format(lanc[3]) }}"
+          data-categoria="{{ lanc[4] }}"
+          data-descricao="{{ lanc[5] }}"
+          data-pagador="{{ lanc[7] or '' }}"
+          data-forma-pagamento="{{ lanc[9] or '' }}"
+          data-origem="{{ lanc[11] or 'manual' }}"
+        >
+          <td><input type="checkbox" name="excluir_ids" value="{{ lanc[0] }}" onchange="verificarSelecao()"></td>
+          <td>{{ lanc[1] }}</td>
+          <td><span class="status {{ lanc[2] }}">{{ lanc[2] }}</span></td>
+          <td>R$ {{ '%.2f'|format(lanc[3]) }}</td>
+          <td>{{ lanc[6] }}</td>
+          <td>{{ lanc[7] or '-' }}</td>
+          <td>{{ lanc[10] or '-' }}</td>
+          <td>{{ lanc[12] or '-' }}</td>
+          <td><span class="status {{ 'receita' if lanc[11] == 'manual' else 'pendente' }}">{{ lanc[11] or 'manual' }}</span></td>
+          <td>{{ lanc[5] or '-' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </form>
+</div>
+
+<div class="floating-actions">
+  <button id="abrirModal" class="btn btn-primary" style="display: block;">Incluir movimento</button>
+  <button type="submit" form="formExclusao" class="btn btn-danger" id="btnExcluir" style="display: none;">Excluir selecionados</button>
+  <button type="button" class="btn btn-secondary" id="btnEditar" style="display: none;">Editar movimento</button>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if not pdf_mode %}
+<script>
+let lancamentoSelecionado = null;
+const tipoLancamento = document.getElementById("tipoLancamento");
+const categoriaLancamento = document.getElementById("categoriaLancamento");
+
+function filtrarCategoriasPorTipo(categoriaSelecionada = null) {
+  const tipo = tipoLancamento.value;
+  const opcoes = Array.from(categoriaLancamento.options);
+  let primeiraOpcaoVisivel = null;
+
+  opcoes.forEach(opcao => {
+    const compativel = opcao.dataset.tipo === tipo;
+    opcao.hidden = !compativel;
+    opcao.disabled = !compativel;
+    if (compativel && !primeiraOpcaoVisivel) primeiraOpcaoVisivel = opcao;
+  });
+
+  if (categoriaSelecionada) {
+    categoriaLancamento.value = categoriaSelecionada;
+  }
+
+  const selecionada = categoriaLancamento.selectedOptions[0];
+  if (!selecionada || selecionada.disabled) {
+    categoriaLancamento.value = primeiraOpcaoVisivel ? primeiraOpcaoVisivel.value : "";
+  }
+}
+
+function selecionarTodosLancamentos(master) {
+  const checkboxes = document.querySelectorAll('input[name="excluir_ids"]');
+  checkboxes.forEach(cb => cb.checked = master.checked);
+  verificarSelecao();
+}
+
+function verificarSelecao() {
+  const selecionados = document.querySelectorAll('input[name="excluir_ids"]:checked');
+  document.getElementById("abrirModal").style.display = selecionados.length === 0 ? "block" : "none";
+  document.getElementById("btnExcluir").style.display = selecionados.length > 0 ? "block" : "none";
+  document.getElementById("btnEditar").style.display = selecionados.length === 1 ? "block" : "none";
+  document.getElementById("painelLote").classList.toggle("hidden", selecionados.length === 0);
+  document.getElementById("totalSelecionados").textContent = selecionados.length;
+  lancamentoSelecionado = selecionados.length === 1 ? selecionados[0].value : null;
+}
+
+document.getElementById("formAcaoLote").addEventListener("submit", (event) => {
+  const selecionados = document.querySelectorAll('input[name="excluir_ids"]:checked');
+  const destino = document.getElementById("idsAcaoLote");
+  destino.innerHTML = "";
+  selecionados.forEach((checkbox) => {
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = "lancamento_ids";
+    input.value = checkbox.value;
+    destino.appendChild(input);
+  });
+  if (selecionados.length === 0) {
+    event.preventDefault();
+  }
+});
+
+document.getElementById("abrirModal").onclick = () => {
+  document.getElementById("modal").classList.remove("hidden");
+  document.getElementById("formLancamento").reset();
+  document.getElementById("formLancamento").action = "/adicionar_lancamento";
+  document.getElementById("tituloModal").textContent = "Novo movimento";
+  document.getElementById("lancamento_id").value = "";
+  filtrarCategoriasPorTipo();
+};
+
+document.getElementById("btnEditar").onclick = function() {
+  if (!lancamentoSelecionado) return;
+  const row = document.querySelector('tr[data-id="' + lancamentoSelecionado + '"]');
+  document.getElementById("modal").classList.remove("hidden");
+  document.getElementById("tituloModal").textContent = "Editar movimento";
+  document.getElementById("formLancamento").action = "/editar_lancamento/" + lancamentoSelecionado;
+  document.getElementById("lancamento_id").value = lancamentoSelecionado;
+
+  document.querySelector('input[name="data"]').value = row.getAttribute("data-data");
+  tipoLancamento.value = row.getAttribute("data-tipo");
+  document.querySelector('input[name="valor"]').value = row.getAttribute("data-valor").replace("R$", "").replace(",", ".").trim();
+  filtrarCategoriasPorTipo(row.getAttribute("data-categoria"));
+  document.querySelector('select[name="pagador"]').value = row.getAttribute("data-pagador");
+  document.querySelector('select[name="forma_pagamento_id"]').value = row.getAttribute("data-forma-pagamento");
+  document.querySelector('textarea[name="descricao"]').value = row.getAttribute("data-descricao");
+};
+
+tipoLancamento.addEventListener("change", () => filtrarCategoriasPorTipo());
+filtrarCategoriasPorTipo();
+
+document.getElementById("fecharModal").onclick = () => {
+  document.getElementById("modal").classList.add("hidden");
+};
+
+window.onclick = (e) => {
+  const modal = document.getElementById("modal");
+  if (e.target === modal) {
+    modal.classList.add("hidden");
+  }
+};
+
+function toggleParcelas() {
+  const checkbox = document.getElementById("parcelado");
+  const campo = document.getElementById("campoParcelas");
+  const inputParcelas = campo.querySelector('input[name="parcelas"]');
+  campo.classList.toggle("hidden", !checkbox.checked);
+  inputParcelas.required = checkbox.checked;
+  if (!checkbox.checked) inputParcelas.value = "";
+}
+</script>
+{% endif %}
+{% endblock %}

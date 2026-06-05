@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Orçamento Pessoal{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="{% if pdf_mode %}pdf-mode{% endif %} {% block pdf_body_class %}{% endblock %}">
+  <div class="mobile-topbar">
+    <button type="button" class="mobile-menu-button" id="mobileMenuButton" aria-label="Abrir menu">Menu</button>
+    <a class="mobile-brand" href="{{ url_for('index') }}">
+      <span class="brand-mark">OP</span>
+      <strong>Orçamento Pessoal</strong>
+    </a>
+  </div>
+  <div class="mobile-overlay hidden" id="mobileOverlay"></div>
+  <aside class="sidebar">
+    <a class="brand" href="{{ url_for('index') }}">
+      <span class="brand-mark">OP</span>
+      <span>
+        <strong>Orçamento Pessoal</strong>
+        <small>Controle financeiro</small>
+      </span>
+    </a>
+
+    <nav class="nav">
+      <div class="nav-section">
+        <span class="nav-label">Principal</span>
+        <a class="nav-item {{ 'active' if request.path == '/' else '' }}" href="{{ url_for('index') }}">
+          <span class="nav-icon">IN</span>
+          <span>
+            <strong>Minha vida financeira</strong>
+            <small>Visão mensal</small>
+          </span>
+        </a>
+        <a class="nav-item {{ 'active' if request.path.startswith('/fechamento_mensal') else '' }}" href="{{ url_for('fechamento_mensal') }}">
+          <span class="nav-icon">FM</span>
+          <span>
+            <strong>Fechamento mensal</strong>
+            <small>Consolida cartao e outras formas</small>
+          </span>
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <span class="nav-label">Rotinas</span>
+        <a class="nav-item {{ 'active' if request.path.startswith('/lancamentos') else '' }}" href="{{ url_for('lancamentos') }}">
+          <span class="nav-icon">LN</span>
+          <span>
+            <strong>Lançamentos</strong>
+            <small>Receitas e despesas</small>
+          </span>
+        </a>
+        <a class="nav-item {{ 'active' if request.path.startswith('/fatura_cartao') else '' }}" href="{{ url_for('fatura_cartao') }}">
+          <span class="nav-icon">FC</span>
+          <span>
+            <strong>Fatura do cartão</strong>
+            <small>Conferência por fatura</small>
+          </span>
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <span class="nav-label">Importações</span>
+        <a class="nav-item {{ 'active' if request.path.startswith('/importar') else '' }}" href="{{ url_for('importar') }}">
+          <span class="nav-icon">CSV</span>
+          <span>
+            <strong>Importar CSV</strong>
+            <small>Entrada manual em lote</small>
+          </span>
+        </a>
+        <a class="nav-item {{ 'active' if request.path == '/pluggy' else '' }}" href="{{ url_for('pluggy') }}">
+          <span class="nav-icon">OF</span>
+          <span>
+            <strong>Integrações bancárias</strong>
+            <small>Open finance</small>
+          </span>
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <span class="nav-label">Relatórios</span>
+        <a class="nav-item {{ 'active' if request.path == '/relatorio' else '' }}" href="{{ url_for('relatorio') }}">
+          <span class="nav-icon">CF</span>
+          <span>
+            <strong>Conferência financeira</strong>
+            <small>Filtros por período</small>
+          </span>
+        </a>
+        <a class="nav-item {{ 'active' if request.path == '/relatorio_divisao_pagadores' else '' }}" href="{{ url_for('relatorio_divisao_pagadores') }}">
+          <span class="nav-icon">DP</span>
+          <span>
+            <strong>Divisão por pagadores</strong>
+            <small>Rateio de despesas</small>
+          </span>
+        </a>
+        <a class="nav-item {{ 'active' if request.path == '/relatorio_consolidado' else '' }}" href="{{ url_for('relatorio_consolidado') }}">
+          <span class="nav-icon">CC</span>
+          <span>
+            <strong>Consolidador por categoria</strong>
+            <small>Resumo por grupos</small>
+          </span>
+        </a>
+        <a class="nav-item {{ 'active' if request.path == '/relatorio_planejado' else '' }}" href="{{ url_for('relatorio_planejado') }}">
+          <span class="nav-icon">OR</span>
+          <span>
+            <strong>Orçamento</strong>
+            <small>Planejado x realizado</small>
+          </span>
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <span class="nav-label">Cadastros e parâmetros</span>
+        <a class="nav-item {{ 'active' if request.path.startswith('/categorias') else '' }}" href="{{ url_for('categorias') }}">
+          <span class="nav-icon">CA</span>
+          <span>
+            <strong>Categorias</strong>
+            <small>Planejamento e tipos</small>
+          </span>
+        </a>
+        <a class="nav-item {{ 'active' if request.path.startswith('/pagadores') else '' }}" href="{{ url_for('pagadores') }}">
+          <span class="nav-icon">PG</span>
+          <span>
+            <strong>Pagadores</strong>
+            <small>Pessoas e divisão</small>
+          </span>
+        </a>
+        <a class="nav-item {{ 'active' if request.path.startswith('/formas_pagamento') else '' }}" href="{{ url_for('formas_pagamento') }}">
+          <span class="nav-icon">FP</span>
+          <span>
+            <strong>Formas de pagamento</strong>
+            <small>Cartão, PIX, dinheiro</small>
+          </span>
+        </a>
+        <a class="nav-item {{ 'active' if request.path.startswith('/configuracoes') else '' }}" href="{{ url_for('configuracoes') }}">
+          <span class="nav-icon">IB</span>
+          <span>
+            <strong>Configurações bancárias</strong>
+            <small>Credenciais e cartão</small>
+          </span>
+        </a>
+        <a class="nav-item {{ 'active' if request.path.startswith('/pluggy/relacionamentos') else '' }}" href="{{ url_for('pluggy_relacionamentos') }}">
+          <span class="nav-icon">RC</span>
+          <span>
+            <strong>Relacionamento de categorias</strong>
+            <small>Categorias do Open finance</small>
+          </span>
+        </a>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <small>{{ app_version }}</small>
+      <strong>{{ session.get('usuario_nome', 'Usuario') }}</strong>
+      <a href="{{ url_for('logout') }}">Sair</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    {% if request.endpoint not in ['login', 'logout', 'static'] %}
+    <div class="page-utility-bar no-print">
+      <a href="{{ current_url_with(pdf='1') }}" class="btn btn-secondary" target="_blank" rel="noopener">Gerar relatorio PDF</a>
+    </div>
+    {% endif %}
+    {% if pdf_mode %}
+    <section class="pdf-report-header">
+      <div class="pdf-report-brand">
+        <span class="brand-mark">OP</span>
+        <div>
+          <strong>Orcamento Pessoal</strong>
+          <small>Relatorio exportado em {{ pdf_generated_at }}</small>
+        </div>
+      </div>
+      <div class="pdf-report-title">
+        <h1>{% block pdf_title %}{{ self.title()|replace('| Orcamento Pessoal', '')|trim }}{% endblock %}</h1>
+        {% block pdf_subtitle %}{% endblock %}
+      </div>
+    </section>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+  {% block scripts %}{% endblock %}
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const pdfMode = document.body.classList.contains('pdf-mode');
+      const mobileMenuButton = document.getElementById('mobileMenuButton');
+      const mobileOverlay = document.getElementById('mobileOverlay');
+      const sidebar = document.querySelector('.sidebar');
+
+      function abrirMenuMobile() {
+        document.body.classList.add('sidebar-open');
+        mobileOverlay.classList.remove('hidden');
+      }
+
+      function fecharMenuMobile() {
+        document.body.classList.remove('sidebar-open');
+        mobileOverlay.classList.add('hidden');
+      }
+
+      if (mobileMenuButton && mobileOverlay && sidebar) {
+        mobileMenuButton.addEventListener('click', abrirMenuMobile);
+        mobileOverlay.addEventListener('click', fecharMenuMobile);
+        sidebar.querySelectorAll('a').forEach(function(link) {
+          link.addEventListener('click', fecharMenuMobile);
+        });
+      }
+
+      if (pdfMode) {
+        window.setTimeout(function() {
+          window.print();
+        }, 150);
+        return;
+      }
+
+      const filterSections = Array.from(document.querySelectorAll('section.period-filter'));
+
+      filterSections.forEach(function(section, index) {
+        const form = section.querySelector('form');
+        if (!form || (form.method || '').toLowerCase() !== 'get') {
+          return;
+        }
+
+        const modalId = `modalFiltrosSistema${index}`;
+        const activeCount = Array.from(new FormData(form).entries())
+          .filter(function(entry) {
+            return String(entry[1] || '').trim() !== '';
+          }).length;
+
+        const trigger = document.createElement('button');
+        trigger.type = 'button';
+        trigger.className = 'btn btn-secondary filter-trigger';
+        trigger.setAttribute('aria-haspopup', 'dialog');
+        trigger.setAttribute('aria-controls', modalId);
+        trigger.innerHTML = `<span class="filter-trigger-icon" aria-hidden="true"></span><span>Filtros</span>${activeCount ? `<strong>${activeCount}</strong>` : ''}`;
+
+        let actions = document.querySelector('.floating-actions');
+        if (!actions) {
+          actions = document.createElement('div');
+          actions.className = 'floating-actions filter-floating-actions';
+          document.body.appendChild(actions);
+        }
+        actions.insertBefore(trigger, actions.firstChild);
+
+        const modal = document.createElement('div');
+        modal.id = modalId;
+        modal.className = 'modal filter-modal hidden';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.setAttribute('aria-labelledby', `${modalId}Titulo`);
+
+        const content = document.createElement('div');
+        content.className = 'modal-content filter-modal-content';
+
+        const header = document.createElement('div');
+        header.className = 'modal-header';
+        header.innerHTML = `<div><h2 id="${modalId}Titulo">Filtros</h2><p class="modal-subtitle">Defina a visualização da tela.</p></div>`;
+
+        const closeButton = document.createElement('button');
+        closeButton.type = 'button';
+        closeButton.className = 'icon-button';
+        closeButton.setAttribute('aria-label', 'Fechar filtros');
+        closeButton.innerHTML = '&times;';
+
+        header.appendChild(closeButton);
+        content.appendChild(header);
+        form.classList.add('filter-modal-form');
+        content.appendChild(form);
+        modal.appendChild(content);
+        section.replaceWith(modal);
+
+        function abrirFiltros() {
+          modal.classList.remove('hidden');
+          const firstField = modal.querySelector('input, select, textarea, button');
+          if (firstField) {
+            firstField.focus();
+          }
+        }
+
+        function fecharFiltros() {
+          modal.classList.add('hidden');
+          trigger.focus();
+        }
+
+        trigger.addEventListener('click', abrirFiltros);
+        closeButton.addEventListener('click', fecharFiltros);
+        modal.addEventListener('click', function(event) {
+          if (event.target === modal) {
+            fecharFiltros();
+          }
+        });
+        document.addEventListener('keydown', function(event) {
+          if (event.key === 'Escape' && document.body.classList.contains('sidebar-open')) {
+            fecharMenuMobile();
+          }
+          if (event.key === 'Escape' && !modal.classList.contains('hidden')) {
+            fecharFiltros();
+          }
+        });
+
+        if (!window.location.search && index === 0) {
+          window.setTimeout(abrirFiltros, 120);
+        }
+      });
+    });
+  </script>
+</body>
+</html>

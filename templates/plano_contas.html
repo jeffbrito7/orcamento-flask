@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Plano de Contas</h1>
+
+<form action="{{ url_for('adicionar_plano_contas') }}" method="post" style="max-width: 700px; margin-bottom: 2rem;">
+  <label for="codigo">Codigo:</label>
+  <input type="text" name="codigo" id="codigo" required>
+
+  <label for="nome">Nome:</label>
+  <input type="text" name="nome" id="nome" required>
+
+  <label for="tipo">Tipo:</label>
+  <select name="tipo" id="tipo" required>
+    <option value="analitica">Analitica</option>
+    <option value="sintetica">Sintetica</option>
+  </select>
+
+  <label for="conta_pai">Conta pai:</label>
+  <input type="number" name="conta_pai" id="conta_pai">
+
+  <button type="submit">Adicionar conta</button>
+</form>
+
+<table>
+  <thead>
+    <tr>
+      <th>Codigo</th>
+      <th>Nome</th>
+      <th>Tipo</th>
+      <th>Conta pai</th>
+      <th>Acoes</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for conta in contas %}
+    <tr>
+      <td>{{ conta[1] }}</td>
+      <td>{{ conta[2] }}</td>
+      <td>{{ conta[3] }}</td>
+      <td>{{ conta[4] or '-' }}</td>
+      <td>
+        <a href="{{ url_for('editar_plano_contas', id=conta[0]) }}">Editar</a>
+        <form action="{{ url_for('excluir_plano_contas', id=conta[0]) }}" method="post" style="display:inline;" onsubmit="return confirm('Excluir esta conta?');">
+          <button type="submit">Excluir</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

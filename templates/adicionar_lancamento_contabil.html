@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-4">
+  <h2>Novo Lançamento Contábil</h2>
+  <form method="post">
+    <div class="mb-3">
+      <label for="data" class="form-label">Data</label>
+      <input type="date" name="data" class="form-control" required>
+    </div>
+    <div class="mb-3">
+      <label for="historico" class="form-label">Histórico</label>
+      <input type="text" name="historico" class="form-control" required>
+    </div>
+    <div class="mb-3">
+      <label for="conta_debito" class="form-label">Conta Débito</label>
+      <input type="text" name="conta_debito" class="form-control" required>
+    </div>
+    <div class="mb-3">
+      <label for="conta_credito" class="form-label">Conta Crédito</label>
+      <input type="text" name="conta_credito" class="form-control" required>
+    </div>
+    <div class="mb-3">
+      <label for="valor" class="form-label">Valor</label>
+      <input type="number" name="valor" class="form-control" step="0.01" required>
+    </div>
+    <button type="submit" class="btn btn-success">Salvar</button>
+    <a href="{{ url_for('index_contabil') }}" class="btn btn-secondary">Cancelar</a>
+  </form>
+</div>
+{% endblock %}

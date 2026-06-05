@@ -1,0 +1,194 @@
+
+{% extends 'base.html' %}
+
+{% block content %}
+<h1 class="titulo">Lançamentos</h1>
+
+<!-- Botões de ação -->
+<div class="botoes-acao">
+  <button id="abrirModal" class="botao-flutuante">➕ Incluir novo lançamento</button>
+  <div id="botoesSelecao" style="display:none;">
+    <form method="post" action="/excluir_lancamentos" id="formExclusao" style="display:inline;">
+      <button type="submit" class="btn-acao">🗑️ Excluir lançamento</button>
+    </form>
+  </div>
+</div>
+
+<!-- Modal para novo lançamento -->
+<div id="modal" class="modal">
+  <div class="modal-conteudo">
+    <span class="fechar" id="fecharModal">&times;</span>
+    <h2>Novo Lançamento</h2>
+    <form action="/adicionar_lancamento" method="post">
+      <label>Data:</label>
+      <input type="date" name="data" required>
+      <label>Tipo:</label>
+      <select name="tipo" required>
+        <option value="receita">Receita</option>
+        <option value="despesa">Despesa</option>
+      </select>
+      <label>Valor Total:</label>
+      <input type="number" step="0.01" name="valor" required>
+      <label>Categoria:</label>
+      <select name="categoria_id" required>
+        {% for c in categorias %}
+          <option value="{{ c[0] }}">{{ c[1] }}</option>
+        {% endfor %}
+      </select>
+      <label>Pagador:</label>
+      <select name="pagador">
+        <option value="">Selecione um pagador</option>
+        {% for p in pagadores %}
+          <option value="{{ p[1] }}">{{ p[1] }}</option>
+        {% endfor %}
+      </select>
+      <label>Descrição:</label>
+      <textarea name="descricao"></textarea>
+      <label><input type="checkbox" name="parcelado" id="parcelado" onchange="toggleParcelas()"> Parcelado?</label>
+      <div id="campoParcelas" class="hidden">
+        <label>Quantidade de Parcelas:</label>
+        <input type="number" name="parcelas" min="1">
+      </div>
+      <button type="submit">Salvar Lançamento</button>
+    </form>
+  </div>
+</div>
+
+<!-- Tabela de lançamentos -->
+<div class="table-container">
+  <table class="tabela-estilo">
+    <thead>
+      <tr>
+        <th></th>
+        <th>Data</th>
+        <th>Tipo</th>
+        <th>Valor</th>
+        <th>Categoria</th>
+        <th>Pagador</th>
+        <th>Descrição</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for lanc in lancamentos %}
+      <tr>
+        <td><input type="checkbox" name="excluir_ids" value="{{ lanc[0] }}" onchange="verificarSelecao()"></td>
+        <td>{{ lanc[1] }}</td>
+        <td>{{ lanc[2] }}</td>
+        <td>R$ {{ '%.2f'|format(lanc[3]) }}</td>
+        <td>{{ lanc[6] }}</td>
+        <td>{{ lanc[7] or '' }}</td>
+        <td>{{ lanc[5] }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<style>
+  .titulo {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    color: #1976d2;
+  }
+
+  .botoes-acao {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .botao-flutuante, .btn-acao {
+    background-color: #1976d2;
+    color: white;
+    font-size: 1rem;
+    padding: 0.7rem 1.2rem;
+    border: none;
+    border-radius: 30px;
+    cursor: pointer;
+  }
+
+  .modal {
+    display: none;
+    position: fixed;
+    z-index: 999;
+    left: 0; top: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5);
+  }
+
+  .modal-conteudo {
+    background: white;
+    margin: 5% auto;
+    padding: 2rem;
+    width: 500px;
+    border-radius: 8px;
+    position: relative;
+  }
+
+  .fechar {
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    cursor: pointer;
+    font-size: 1.5rem;
+  }
+
+  .hidden { display: none; }
+
+  .tabela-estilo {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: #f9fbfd;
+    box-shadow: 0 0 10px rgba(0,0,0,0.05);
+  }
+
+  .tabela-estilo th, .tabela-estilo td {
+    border: 1px solid #ddd;
+    padding: 0.5rem;
+    text-align: left;
+  }
+
+  .tabela-estilo th {
+    background-color: #e3f2fd;
+  }
+
+  .tabela-estilo tr:hover {
+    background-color: #f1f1f1;
+  }
+</style>
+
+<script>
+  // Modal
+  document.getElementById("abrirModal").onclick = () => {
+    document.getElementById("modal").style.display = "block";
+  };
+  document.getElementById("fecharModal").onclick = () => {
+    document.getElementById("modal").style.display = "none";
+  };
+  window.onclick = (e) => {
+    if (e.target == document.getElementById("modal")) {
+      document.getElementById("modal").style.display = "none";
+    }
+  };
+
+  function toggleParcelas() {
+    const campo = document.getElementById("campoParcelas");
+    campo.classList.toggle("hidden", !document.getElementById("parcelado").checked);
+  }
+
+  function verificarSelecao() {
+    const checkboxes = document.querySelectorAll('input[name="excluir_ids"]:checked');
+    const botoes = document.getElementById("botoesSelecao");
+    const incluir = document.getElementById("abrirModal");
+    if (checkboxes.length > 0) {
+      botoes.style.display = "flex";
+      incluir.style.display = "none";
+    } else {
+      botoes.style.display = "none";
+      incluir.style.display = "inline-block";
+    }
+  }
+</script>
+{% endblock %}

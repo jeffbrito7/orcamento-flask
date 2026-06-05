@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block title %}Configuracoes | Orcamento Pessoal{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <span class="eyebrow">Sistema</span>
+    <h1>Configuracoes</h1>
+    <p>Centralize os dados operacionais da integracao e mantenha as chaves sensiveis protegidas.</p>
+  </div>
+</section>
+
+{% if erro %}
+<div class="alert alert-danger">{{ erro }}</div>
+{% endif %}
+{% if sucesso %}
+<div class="alert alert-success">{{ sucesso }}</div>
+{% endif %}
+
+<section class="content-grid">
+  <article class="panel">
+    <div class="panel-header">
+      <div>
+        <span class="eyebrow">Seguranca</span>
+        <h2>Chave interna do Flask</h2>
+        <p>A SECRET_KEY protege o login e as sessoes do sistema.</p>
+      </div>
+    </div>
+    <div class="config-note">
+      {% if segredo_ambiente %}
+      <strong>SECRET_KEY carregada por variavel de ambiente.</strong>
+      <p>Esse e o melhor caminho para producao.</p>
+      {% else %}
+      <strong>SECRET_KEY gerada automaticamente.</strong>
+      <p>Ela fica salva neste computador em:</p>
+      <code>{{ secret_path }}</code>
+      {% endif %}
+      <p class="field-help">Nao e recomendado editar essa chave pela tela. Se ela mudar, os usuarios logados podem precisar entrar novamente.</p>
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="panel-header">
+      <div>
+        <span class="eyebrow">Pluggy</span>
+        <h2>Dados da integracao</h2>
+        <p>Use estes campos para ajustar a sincronizacao sem reiniciar o codigo.</p>
+      </div>
+    </div>
+
+    <form method="post" class="config-form">
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="PLUGGY_CLIENT_ID">Client ID</label>
+          <input type="text" id="PLUGGY_CLIENT_ID" name="PLUGGY_CLIENT_ID" value="{{ config.PLUGGY_CLIENT_ID }}" autocomplete="off">
+        </div>
+
+        <div class="form-group">
+          <label for="PLUGGY_CLIENT_SECRET">Client Secret</label>
+          <input type="password" id="PLUGGY_CLIENT_SECRET" name="PLUGGY_CLIENT_SECRET" placeholder="{{ 'Ja configurado' if config.PLUGGY_CLIENT_SECRET_CONFIGURADO else 'Cole o secret da Pluggy' }}" autocomplete="off">
+          <small class="field-help">Por seguranca, o secret salvo nao aparece na tela. Preencha apenas se quiser cadastrar ou trocar.</small>
+        </div>
+
+        <div class="form-group">
+          <label for="PLUGGY_ITEM_ID">Item ID</label>
+          <input type="text" id="PLUGGY_ITEM_ID" name="PLUGGY_ITEM_ID" value="{{ config.PLUGGY_ITEM_ID }}" autocomplete="off">
+        </div>
+
+        <div class="form-group">
+          <label for="PLUGGY_CARD_LAST4">Final do cartao</label>
+          <input type="text" id="PLUGGY_CARD_LAST4" name="PLUGGY_CARD_LAST4" value="{{ config.PLUGGY_CARD_LAST4 }}" maxlength="4">
+        </div>
+
+        <div class="form-group">
+          <label for="PLUGGY_FORMA_PAGAMENTO_NOME">Forma de pagamento criada</label>
+          <input type="text" id="PLUGGY_FORMA_PAGAMENTO_NOME" name="PLUGGY_FORMA_PAGAMENTO_NOME" value="{{ config.PLUGGY_FORMA_PAGAMENTO_NOME }}">
+        </div>
+
+        <div class="form-group">
+          <label for="PLUGGY_PAGADOR_DIVISAO">Pagador para divisao automatica</label>
+          <input type="text" id="PLUGGY_PAGADOR_DIVISAO" name="PLUGGY_PAGADOR_DIVISAO" value="{{ config.PLUGGY_PAGADOR_DIVISAO }}">
+          <small class="field-help">Use o formato com "e", por exemplo: Juliana e Jefferson.</small>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Salvar configuracoes</button>
+        <a href="{{ url_for('pluggy') }}" class="btn btn-secondary">Ir para Integracoes Bancarias</a>
+      </div>
+    </form>
+  </article>
+</section>
+{% endblock %}

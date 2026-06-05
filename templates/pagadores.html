@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+
+{% block title %}Pagadores | Orçamento Pessoal{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <span class="eyebrow">Cadastro</span>
+    <h1>Pagadores</h1>
+    <p>Organize os responsáveis por pagamentos e recebimentos usados nos lançamentos.</p>
+  </div>
+  <button type="button" class="btn btn-primary" id="abrirModalPagador">Adicionar pagador</button>
+</section>
+
+<section class="metric-grid category-summary">
+  <article class="metric-card">
+    <span class="metric-label">Pagadores cadastrados</span>
+    <strong>{{ pagadores|length }}</strong>
+    <small>Total disponível para seleção nos lançamentos</small>
+  </article>
+</section>
+
+<section class="table-container table-section">
+  <div class="table-toolbar">
+    <div>
+      <h2>Lista de pagadores</h2>
+      <p>Edite nomes ou remova cadastros que não serão mais usados.</p>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Código</th>
+        <th>Nome</th>
+        <th class="actions-column">Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in pagadores %}
+      <tr>
+        <td class="muted">#{{ p[0] }}</td>
+        <td><strong>{{ p[1] }}</strong></td>
+        <td class="actions-column">
+          <button type="button" class="link-action" data-id="{{ p[0] }}" data-nome="{{ p[1] }}" onclick="abrirEdicaoPagador(this)">Editar</button>
+          <form action="{{ url_for('excluir_pagador', id=p[0]) }}" method="post" class="inline-action" onsubmit="return confirm('Excluir este pagador?');">
+            <button type="submit" class="link-action danger-link">Excluir</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<div id="modalPagador" class="modal hidden">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div>
+        <h2 id="tituloModalPagador">Adicionar pagador</h2>
+        <p class="modal-subtitle">O nome cadastrado aparecerá nos lançamentos e relatórios.</p>
+      </div>
+      <button type="button" class="icon-button" id="fecharModalPagador" aria-label="Fechar">&times;</button>
+    </div>
+
+    <form id="formPagador" action="{{ url_for('adicionar_pagador') }}" method="post">
+      <div class="form-group">
+        <label for="nomePagador">Nome do pagador</label>
+        <input type="text" name="nome" id="nomePagador" placeholder="Ex.: Jeff" required>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Salvar pagador</button>
+        <button type="button" class="btn btn-secondary" id="cancelarModalPagador">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const modalPagador = document.getElementById('modalPagador');
+  const formPagador = document.getElementById('formPagador');
+  const nomePagador = document.getElementById('nomePagador');
+  const tituloModalPagador = document.getElementById('tituloModalPagador');
+
+  function fecharModalPagador() {
+    modalPagador.classList.add('hidden');
+  }
+
+  document.getElementById('abrirModalPagador').addEventListener('click', () => {
+    formPagador.action = "{{ url_for('adicionar_pagador') }}";
+    formPagador.reset();
+    tituloModalPagador.textContent = 'Adicionar pagador';
+    modalPagador.classList.remove('hidden');
+    nomePagador.focus();
+  });
+
+  function abrirEdicaoPagador(botao) {
+    formPagador.action = `/editar_pagador/${botao.dataset.id}`;
+    tituloModalPagador.textContent = 'Editar pagador';
+    nomePagador.value = botao.dataset.nome;
+    modalPagador.classList.remove('hidden');
+    nomePagador.focus();
+  }
+
+  document.getElementById('fecharModalPagador').addEventListener('click', fecharModalPagador);
+  document.getElementById('cancelarModalPagador').addEventListener('click', fecharModalPagador);
+  window.addEventListener('click', (event) => {
+    if (event.target === modalPagador) fecharModalPagador();
+  });
+</script>
+{% endblock %}
