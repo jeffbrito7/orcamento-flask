@@ -3736,10 +3736,10 @@ def relatorio_planejado():
     conn = get_db_connection()
     cursor = conn.cursor()
     fechamento = carregar_fechamento_mensal(conn, competencia_inicio_data, competencia_fim_data)
-    total_receita = fechamento['total_receita']
+    total_receita = float(fechamento['total_receita'] or 0)
     gastos_por_categoria = {}
     for item in fechamento['itens']:
-        gastos_por_categoria[item['categoria']] = gastos_por_categoria.get(item['categoria'], 0) + item['valor']
+        gastos_por_categoria[item['categoria']] = gastos_por_categoria.get(item['categoria'], 0) + float(item['valor'] or 0)
     cursor.execute('''
         SELECT c.id, c.nome, c.percentual_orcamento
         FROM categoria c
@@ -3749,13 +3749,14 @@ def relatorio_planejado():
     ''', (usuario_id,))
     orcamento_categorias = []
     for cid, nome, percentual in cursor.fetchall():
-        gasto = gastos_por_categoria.get(nome, 0)
-        valor_planejado = total_receita * (percentual or 0) / 100
+        percentual = float(percentual or 0)
+        gasto = float(gastos_por_categoria.get(nome, 0) or 0)
+        valor_planejado = total_receita * percentual / 100
         restante = valor_planejado - gasto
         porcentagem = (gasto / valor_planejado * 100) if valor_planejado else 0
         orcamento_categorias.append({
             'categoria': nome,
-            'percentual': percentual or 0,
+            'percentual': percentual,
             'planejado': valor_planejado,
             'realizado': gasto,
             'restante': restante,
